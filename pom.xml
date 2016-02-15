@@ -17,10 +17,13 @@
         <java.target.version>1.8</java.target.version>
         <java.source.version>1.8</java.source.version>
 
-
         <junit.version>4.12</junit.version>
         <!--eclipse collections-->
+
 	    <ec.version>7.0.0</ec.version>
+        <guava.version>19.0</guava.version>
+
+
         <jcache.api.version>1.0.0</jcache.api.version>
         <jcache.tck.version>1.0.1</jcache.tck.version>
 
