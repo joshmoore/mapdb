@@ -54,7 +54,6 @@
             <version>${ec.version}</version>
         </dependency>
 
-        <!-- TODO remove Guava dep, it is needed to concat iterators in HTreeMap -->
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
