@@ -796,74 +796,86 @@ class StoreDirect(
                 else serialize(record, serializer);
 
         Utils.lockWrite(locks[recidToSegment(recid)]) {
-            val oldIndexVal = getIndexVal(recid);
-            val oldLinked = indexValFlagLinked(oldIndexVal);
-            val oldSize = indexValToSize(oldIndexVal);
-            if (oldSize == DELETED_RECORD_SIZE)
-                throw DBException.GetVoid(recid)
-            val newUpSize:Long = if(di==null) -16L else roundUp(di.pos.toLong(), 16)
-            //try to reuse record if possible, if not possible, delete old record and allocate new
-            if ((oldLinked || newUpSize!=roundUp(oldSize,16)) &&
-                oldSize != NULL_RECORD_SIZE && oldSize!=0L ) {
-                Utils.lock(structuralLock) {
-                    if (oldLinked) {
-                        linkedRecordDelete(oldIndexVal)
-                    } else {
-                        val oldOffset = indexValToOffset(oldIndexVal);
-                        val sizeUp = roundUp(oldSize, 16)
-                        if(CC.ZEROS)
-                            volume.clear(oldOffset, oldOffset+sizeUp)
-                        releaseData(sizeUp, oldOffset, false)
-                    }
-                }
-            }
-
-            if (di == null) {
-                //null values
-                setIndexVal(recid, indexValCompose(size = NULL_RECORD_SIZE, offset = 0L, linked = 0, unused = 0, archive = 1))
-                return
-            }
-
-            if (di.pos > MAX_RECORD_SIZE) {
-                //linked record
-                val newIndexVal = linkedRecordPut(di.buf, di.pos)
-                setIndexVal(recid, newIndexVal);
-                return
-            }
-            val size = di.pos;
-            val offset =
-                    if(!oldLinked && newUpSize==roundUp(oldSize,16) ){
-                        //reuse existing offset
-                        indexValToOffset(oldIndexVal)
-                    }else if(size==0){
-                        0L
-                    }else{
-                        Utils.lock(structuralLock) {
-                            allocateData(roundUp(size, 16), false)
-                        }
-                    }
-            volume.putData(offset, di.buf, 0, size)
-            setIndexVal(recid, indexValCompose(size = size.toLong(), offset = offset, linked = 0, unused = 0, archive = 1))
+            updateInternal(recid, di)
         }
     }
 
+    private fun updateInternal(recid: Long, di: DataOutput2?){
+        if(CC.ASSERT)
+            Utils.assertWriteLock(locks[recidToSegment(recid)])
+
+        val oldIndexVal = getIndexVal(recid);
+        val oldLinked = indexValFlagLinked(oldIndexVal);
+        val oldSize = indexValToSize(oldIndexVal);
+        if (oldSize == DELETED_RECORD_SIZE)
+            throw DBException.GetVoid(recid)
+        val newUpSize: Long = if (di == null) -16L else roundUp(di.pos.toLong(), 16)
+        //try to reuse record if possible, if not possible, delete old record and allocate new
+        if ((oldLinked || newUpSize != roundUp(oldSize, 16)) &&
+                oldSize != NULL_RECORD_SIZE && oldSize != 0L ) {
+            Utils.lock(structuralLock) {
+                if (oldLinked) {
+                    linkedRecordDelete(oldIndexVal)
+                } else {
+                    val oldOffset = indexValToOffset(oldIndexVal);
+                    val sizeUp = roundUp(oldSize, 16)
+                    if (CC.ZEROS)
+                        volume.clear(oldOffset, oldOffset + sizeUp)
+                    releaseData(sizeUp, oldOffset, false)
+                }
+            }
+        }
+
+        if (di == null) {
+            //null values
+            setIndexVal(recid, indexValCompose(size = NULL_RECORD_SIZE, offset = 0L, linked = 0, unused = 0, archive = 1))
+            return
+        }
+
+        if (di.pos > MAX_RECORD_SIZE) {
+            //linked record
+            val newIndexVal = linkedRecordPut(di.buf, di.pos)
+            setIndexVal(recid, newIndexVal);
+            return
+        }
+        val size = di.pos;
+        val offset =
+                if (!oldLinked && newUpSize == roundUp(oldSize, 16) ) {
+                    //reuse existing offset
+                    indexValToOffset(oldIndexVal)
+                } else if (size == 0) {
+                    0L
+                } else {
+                    Utils.lock(structuralLock) {
+                        allocateData(roundUp(size, 16), false)
+                    }
+                }
+        volume.putData(offset, di.buf, 0, size)
+        setIndexVal(recid, indexValCompose(size = size.toLong(), offset = offset, linked = 0, unused = 0, archive = 1))
+        return
+    }
+
     override fun <R> compareAndSwap(recid: Long, expectedOldRecord: R?, newRecord: R?, serializer: Serializer<R>): Boolean {
-        //TODO thread safe CAS
         assertNotClosed()
+        Utils.lockWrite(locks[recidToSegment(recid)]) {
+            //compare old value
+            val old = get(recid, serializer)
 
-        //compare old value
-        val old = get(recid, serializer)
+            if (old === null && expectedOldRecord !== null)
+                return false;
+            if (old !== null && expectedOldRecord === null)
+                return false;
 
-        if(old===null && expectedOldRecord!==null)
-            return false;
-        if(old!==null && expectedOldRecord===null)
-            return false;
+            if (old !== expectedOldRecord && !serializer.equals(old!!, expectedOldRecord!!))
+                return false
 
-        if(old!==expectedOldRecord && !serializer.equals(old!!, expectedOldRecord!!))
-            return false
+            val di =
+                    if(newRecord==null) null
+                    else serialize(newRecord, serializer);
 
-        update(recid, newRecord, serializer)
-        return true;
+            updateInternal(recid, di)
+            return true;
+        }
     }
 
     override fun <R> delete(recid: Long, serializer: Serializer<R>) {

@@ -4,6 +4,7 @@ import org.eclipse.collections.impl.map.mutable.primitive.LongObjectHashMap
 import org.junit.Test
 import java.util.*
 import org.junit.Assert.*
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.test.assertFailsWith
 
 /**
@@ -351,6 +352,32 @@ abstract class StoreTest {
             s.verify()
         }
     }
+
+    @Test fun concurrent_CAS(){
+        if(TT.shortTest())
+            return;
+        val s = openStore();
+        if(s.isThreadSafe.not())
+            return;
+
+        val ntime = TT.nowPlusMinutes(1.0)
+        var counter = AtomicLong(0);
+        val recid = s.put(0L, Serializer.LONG)
+        TT.fork(10){
+            val random = Random();
+            while(ntime>System.currentTimeMillis()){
+                val plus = random.nextInt(1000).toLong()
+                val v:Long = s.get(recid, Serializer.LONG)!!
+                if(s.compareAndSwap(recid, v, v+plus, Serializer.LONG)){
+                    counter.addAndGet(plus);
+                }
+            }
+        }
+
+        assertTrue(counter.get()>0)
+        assertEquals(counter.get(), s.get(recid, Serializer.LONG))
+    }
+
 
 
 }
