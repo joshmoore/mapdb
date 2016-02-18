@@ -1,5 +1,6 @@
 package org.mapdb
 
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList
 import org.eclipse.collections.impl.set.mutable.primitive.LongHashSet
 import org.junit.Assert.*
 import org.junit.Test
@@ -88,7 +89,7 @@ class DBTest{
 
         val p = db.nameCatalogParamsFor("aa")
 
-        assertEquals(14, p.size)
+        assertEquals(17, p.size)
         assertEquals(1,hmap.indexTrees.size)
         assertEquals((hmap.indexTrees[0] as IndexTreeLongLongMap).rootRecid.toString(), p["aa"+DB.Keys.rootRecids])
         assertEquals("HashMap", p["aa"+DB.Keys.type])
@@ -105,6 +106,12 @@ class DBTest{
         assertEquals("11", p["aa"+DB.Keys.expireCreateTTL])
         assertEquals("22", p["aa"+DB.Keys.expireUpdateTTL])
         assertEquals("33", p["aa"+DB.Keys.expireGetTTL])
+
+        fun qToString(q:QueueLong)=""+q.tailRecid+","+q.headRecid+","+q.headPrevRecid
+        assertEquals(qToString(hmap.expireCreateQueues!![0]), p["aa"+DB.Keys.expireCreateQueues])
+        assertEquals(qToString(hmap.expireUpdateQueues!![0]), p["aa"+DB.Keys.expireUpdateQueues])
+        assertEquals(qToString(hmap.expireGetQueues!![0]), p["aa"+DB.Keys.expireGetQueues])
+
         assertEquals(1, hmap.counterRecids!!.size)
         assertTrue(p["aa"+DB.Keys.counterRecids]!!.toLong()>0)
 
@@ -119,7 +126,7 @@ class DBTest{
 
         val p = db.nameCatalogParamsFor("aa")
 
-        assertEquals(14, p.size)
+        assertEquals(17, p.size)
         val rootRecids = hmap.indexTrees
                 .map { (it as IndexTreeLongLongMap).rootRecid.toString()}
                 .fold("",{str, it-> str+",$it"})
@@ -143,6 +150,10 @@ class DBTest{
         assertEquals("0", p["aa"+DB.Keys.expireUpdateTTL])
         assertEquals("0", p["aa"+DB.Keys.expireGetTTL])
 
+        assertEquals("", p["aa"+DB.Keys.expireCreateQueues])
+        assertEquals("", p["aa"+DB.Keys.expireUpdateQueues])
+        assertEquals("", p["aa"+DB.Keys.expireGetQueues])
+
         assertEquals(null, hmap.counterRecids)
         assertEquals("", p["aa"+DB.Keys.counterRecids])
 
@@ -162,7 +173,7 @@ class DBTest{
 
         val p = db.nameCatalogParamsFor("aa")
 
-        assertEquals(14, p.size)
+        assertEquals(17, p.size)
         assertEquals(8, hmap.indexTrees.size)
         assertEquals(8, Utils.identityCount(hmap.indexTrees))
         assertEquals(1, hmap.stores.toSet().size)
@@ -190,6 +201,21 @@ class DBTest{
         hmap.expireCreateQueues!!.forEach{assertTrue(db.store===it.store)}
         hmap.expireUpdateQueues!!.forEach{assertTrue(db.store===it.store)}
         hmap.expireGetQueues!!.forEach{assertTrue(db.store===it.store)}
+
+
+        fun qToString(qq:Array<QueueLong>):String{
+            val r = LongArrayList()
+            for(q in qq){
+                r.add(q.tailRecid)
+                r.add(q.headRecid)
+                r.add(q.headPrevRecid)
+            }
+            return r.makeString("",",","")
+        }
+        assertEquals(qToString(hmap.expireCreateQueues!!), p["aa"+DB.Keys.expireCreateQueues])
+        assertEquals(qToString(hmap.expireUpdateQueues!!), p["aa"+DB.Keys.expireUpdateQueues])
+        assertEquals(qToString(hmap.expireGetQueues!!), p["aa"+DB.Keys.expireGetQueues])
+
 
         //ensure there are no duplicates in recids
         val expireRecids = LongHashSet();
@@ -370,6 +396,38 @@ class DBTest{
         maker.takeAll((0..6).map{Pair(it, it*2)})
         val map = maker.finish()
         assertEquals(7, map.size)
+    }
+
+    @Test fun treeMap_reopen(){
+        val f = TT.tempFile()
+
+        var db = DB(store=StoreDirect.make(file=f.path), storeOpened = false)
+        var map = db.treeMap("map", Serializer.INTEGER, Serializer.INTEGER).create()
+        map.put(11,22)
+        db.commit()
+        db.close()
+
+        db = DB(store=StoreDirect.make(file=f.path), storeOpened = true)
+        map = db.treeMap("map", Serializer.INTEGER, Serializer.INTEGER).open()
+        assertEquals(22, map[11])
+
+        f.delete()
+    }
+
+    @Test fun hashMap_reopen(){
+        val f = TT.tempFile()
+
+        var db = DB(store=StoreDirect.make(file=f.path), storeOpened = false)
+        var map = db.hashMap("map", Serializer.INTEGER, Serializer.INTEGER).create()
+        map.put(11,22)
+        db.commit()
+        db.close()
+
+        db = DB(store=StoreDirect.make(file=f.path), storeOpened = true)
+        map = db.hashMap("map", Serializer.INTEGER, Serializer.INTEGER).open()
+        assertEquals(22, map[11])
+
+        f.delete()
     }
 
 }
