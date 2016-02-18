@@ -1086,8 +1086,13 @@ class BTreeMap<K,V>(
 
                     stack.add(inode)
 
-                    linkRecidLimit = node.children[pos]
-                    node = getNode(linkRecidLimit)
+                    if(pos>=node.children.size) {
+                        linkRecidLimit = 0L
+                        node = getNode(node.children[node.children.size-1])
+                    }else{
+                        linkRecidLimit = node.children[pos]
+                        node = getNode(linkRecidLimit)
+                    }
                 }
                 var pos = keySerializer.valueArraySearch(node.keys, hi)
                 if(pos<0)
@@ -1667,11 +1672,13 @@ class BTreeMap<K,V>(
     }
 
     override fun firstKey(): K? {
-        return firstEntry()?.key
+        val e = firstEntry()?:throw NoSuchElementException()
+        return e.key
     }
 
     override fun lastKey(): K? {
-        return lastEntry()?.key
+        val e = lastEntry()?:throw NoSuchElementException()
+        return e.key
     }
 
     override fun pollFirstEntry(): MutableMap.MutableEntry<K, V?>? {
