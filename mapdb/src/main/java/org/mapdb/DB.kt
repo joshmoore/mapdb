@@ -933,4 +933,33 @@ open class DB(
 
     fun atomicString(name:String, value:String?) = AtomicStringMaker(this, name, value)
 
+
+    class AtomicVarMaker<E>(override val db:DB,
+                            override val name:String,
+                            protected val serializer:Serializer<E> = Serializer.JAVA as Serializer<E>,
+                            protected val value:E? = null):Maker<Atomic.Var<E>>(){
+
+        override val type = "AtomicVar"
+
+        override fun create2(catalog: SortedMap<String, String>): Atomic.Var<E> {
+            val recid = db.store.put(value, serializer)
+            catalog[name+Keys.recid] = recid.toString()
+            db.nameCatalogPutClass(catalog, name+Keys.serializer, serializer)
+
+            return Atomic.Var(db.store, recid, serializer)
+        }
+
+        override fun open2(catalog: SortedMap<String, String>): Atomic.Var<E> {
+            val recid = catalog[name+Keys.recid]!!.toLong()
+            val serializer = db.nameCatalogGetClass<Serializer<E>>(catalog, name+Keys.serializer)
+                    ?: this.serializer
+            return Atomic.Var(db.store, recid, serializer)
+        }
+    }
+
+    fun <E> atomicVar(name:String, serializer:Serializer<E> ) = AtomicVarMaker(this, name, serializer)
+
+    fun <E> atomicVar(name:String, serializer:Serializer<E>, value:E? ) = AtomicVarMaker(this, name, serializer, value)
+
+
 }
