@@ -8,6 +8,7 @@ import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantReadWriteLock
 
 /**
  * A database with easy access to named maps and other collections.
@@ -18,6 +19,8 @@ open class DB(
         /** True if store existed before and was opened, false if store was created and is completely empty */
         val storeOpened:Boolean
 ): Closeable {
+
+    internal val lock = ReentrantReadWriteLock();
 
     @Volatile private  var closed = false;
 
@@ -127,11 +130,16 @@ open class DB(
     /** List of executors associated with this database. Those will be terminated on close() */
     internal val executors:MutableSet<ExecutorService> = Collections.synchronizedSet(LinkedHashSet());
 
-    fun nameCatalogLoad():SortedMap<String, String> =
-            store.get(RECID_NAME_CATALOG, NAME_CATALOG_SERIALIZER)
-                    ?: throw DBException.WrongConfiguration("Could not open store, it has no Named Catalog");
+    fun nameCatalogLoad():SortedMap<String, String> {
+        if(CC.ASSERT)
+            Utils.assertReadLock(lock)
+        return store.get(RECID_NAME_CATALOG, NAME_CATALOG_SERIALIZER)
+                ?: throw DBException.WrongConfiguration("Could not open store, it has no Named Catalog");
+    }
 
     fun nameCatalogSave(nameCatalog: SortedMap<String, String>) {
+        if(CC.ASSERT)
+            Utils.assertWriteLock(lock)
         store.update(RECID_NAME_CATALOG, nameCatalog, NAME_CATALOG_SERIALIZER)
     }
 
@@ -180,30 +188,36 @@ open class DB(
     }
 
     fun commit(){
-        store.commit()
+        Utils.lockWrite(lock) {
+            store.commit()
+        }
     }
 
     fun rollback(){
         if(store !is StoreTx)
             throw UnsupportedOperationException("Store does not support rollback")
 
-        store.rollback()
+        Utils.lockWrite(lock) {
+            store.rollback()
+        }
     }
 
     fun isClosed() = closed;
 
     override fun close(){
-        //shutdown running executors if any
-        executors.forEach { it.shutdown() }
-        //await termination on all
-        executors.forEach {
-            // TODO LOG this could use some warnings, if background tasks fails to shutdown
-            while(!it.awaitTermination(1, TimeUnit.DAYS)){
+        Utils.lockWrite(lock) {
+            //shutdown running executors if any
+            executors.forEach { it.shutdown() }
+            //await termination on all
+            executors.forEach {
+                // TODO LOG this could use some warnings, if background tasks fails to shutdown
+                while (!it.awaitTermination(1, TimeUnit.DAYS)) {
+                }
             }
+            executors.clear()
+            closed = true;
+            store.close()
         }
-        executors.clear()
-        closed = true;
-        store.close()
     }
 
 
@@ -382,217 +396,218 @@ open class DB(
         internal fun make(
                 create:Boolean?
         ):HTreeMap<K,V>{
-            db.checkName(name)
-            if(_expireOverflow!=null && _valueLoader !=null)
-                throw DBException.WrongConfiguration("ExpireOverflow and ValueLoader can not be used at the same time")
+            Utils.lockWrite(db.lock) {
+                db.checkName(name)
+                if (_expireOverflow != null && _valueLoader != null)
+                    throw DBException.WrongConfiguration("ExpireOverflow and ValueLoader can not be used at the same time")
 
-            val nameCatalog = db.nameCatalogLoad()
+                val nameCatalog = db.nameCatalogLoad()
 
-
-            val contains = nameCatalog.containsKey(name + Keys.type);
-            if (create != null) {
-                if (contains && create)
-                    throw DBException.WrongConfiguration("Named record already exists: $name")
-                if (!create && !contains)
-                    throw DBException.WrongConfiguration("Named record does not exist: $name")
-            }
-
-            val segmentCount = 1.shl(_concShift)
-            val hashSeed:Int
-            val stores = Array(segmentCount, _storeFactory)
-            val rootRecids:LongArray
-            val counterRecids: LongArray?
-
-            val expireCreateQueues: Array<QueueLong>?
-            val expireUpdateQueues: Array<QueueLong>?
-            val expireGetQueues: Array<QueueLong>?
-
-            if((create!=null && create) || !contains) {
-                //create
-
-                hashSeed = _hashSeed ?: SecureRandom().nextInt()
-
-                rootRecids = LongArray(segmentCount)
-                var rootRecidsStr = "";
-                for (i in 0 until segmentCount) {
-                    val rootRecid = stores[i].put(IndexTreeListJava.dirEmpty(), IndexTreeListJava.dirSer)
-                    rootRecids[i] = rootRecid
-                    rootRecidsStr += (if (i == 0) "" else ",") + rootRecid
+                val contains = nameCatalog.containsKey(name + Keys.type);
+                if (create != null) {
+                    if (contains && create)
+                        throw DBException.WrongConfiguration("Named record already exists: $name")
+                    if (!create && !contains)
+                        throw DBException.WrongConfiguration("Named record does not exist: $name")
                 }
 
-                nameCatalog[name + Keys.type] = "HashMap"
-                db.nameCatalogPutClass(nameCatalog, name + Keys.keySerializer, _keySerializer)
-                db.nameCatalogPutClass(nameCatalog, name + Keys.valueSerializer, _valueSerializer)
+                val segmentCount = 1.shl(_concShift)
+                val hashSeed: Int
+                val stores = Array(segmentCount, _storeFactory)
+                val rootRecids: LongArray
+                val counterRecids: LongArray?
 
-                nameCatalog[name + Keys.valueInline] = _valueInline.toString()
+                val expireCreateQueues: Array<QueueLong>?
+                val expireUpdateQueues: Array<QueueLong>?
+                val expireGetQueues: Array<QueueLong>?
 
-                nameCatalog[name + Keys.rootRecids] = rootRecidsStr
-                nameCatalog[name + Keys.hashSeed] = hashSeed.toString()
-                nameCatalog[name + Keys.concShift] = _concShift.toString()
-                nameCatalog[name + Keys.dirShift] = _dirShift.toString()
-                nameCatalog[name + Keys.levels] = _levels.toString()
-                nameCatalog[name + Keys.removeCollapsesIndexTree] = _removeCollapsesIndexTree.toString()
+                if ((create != null && create) || !contains) {
+                    //create
 
-                counterRecids = if (_counterEnable) {
-                    val cr = LongArray(segmentCount, { segment ->
-                        stores[segment].put(0L, Serializer.LONG_PACKED)
-                    })
-                    nameCatalog[name + Keys.counterRecids] = LongArrayList.newListWith(*cr).makeString("", ",", "")
-                    cr
+                    hashSeed = _hashSeed ?: SecureRandom().nextInt()
+
+                    rootRecids = LongArray(segmentCount)
+                    var rootRecidsStr = "";
+                    for (i in 0 until segmentCount) {
+                        val rootRecid = stores[i].put(IndexTreeListJava.dirEmpty(), IndexTreeListJava.dirSer)
+                        rootRecids[i] = rootRecid
+                        rootRecidsStr += (if (i == 0) "" else ",") + rootRecid
+                    }
+
+                    nameCatalog[name + Keys.type] = "HashMap"
+                    db.nameCatalogPutClass(nameCatalog, name + Keys.keySerializer, _keySerializer)
+                    db.nameCatalogPutClass(nameCatalog, name + Keys.valueSerializer, _valueSerializer)
+
+                    nameCatalog[name + Keys.valueInline] = _valueInline.toString()
+
+                    nameCatalog[name + Keys.rootRecids] = rootRecidsStr
+                    nameCatalog[name + Keys.hashSeed] = hashSeed.toString()
+                    nameCatalog[name + Keys.concShift] = _concShift.toString()
+                    nameCatalog[name + Keys.dirShift] = _dirShift.toString()
+                    nameCatalog[name + Keys.levels] = _levels.toString()
+                    nameCatalog[name + Keys.removeCollapsesIndexTree] = _removeCollapsesIndexTree.toString()
+
+                    counterRecids = if (_counterEnable) {
+                        val cr = LongArray(segmentCount, { segment ->
+                            stores[segment].put(0L, Serializer.LONG_PACKED)
+                        })
+                        nameCatalog[name + Keys.counterRecids] = LongArrayList.newListWith(*cr).makeString("", ",", "")
+                        cr
+                    } else {
+                        nameCatalog[name + Keys.counterRecids] = ""
+                        null
+                    }
+
+                    nameCatalog[name + Keys.expireCreateTTL] = _expireCreateTTL.toString()
+                    nameCatalog[name + Keys.expireUpdateTTL] = _expireUpdateTTL.toString()
+                    nameCatalog[name + Keys.expireGetTTL] = _expireGetTTL.toString()
+
+                    var createQ = LongArrayList()
+                    var updateQ = LongArrayList()
+                    var getQ = LongArrayList()
+
+
+                    fun emptyLongQueue(segment: Int, qq: LongArrayList): QueueLong {
+                        val store = stores[segment]
+                        val q = store.put(null, QueueLong.Node.SERIALIZER);
+                        val tailRecid = store.put(q, Serializer.RECID)
+                        val headRecid = store.put(q, Serializer.RECID)
+                        val headPrevRecid = store.put(0L, Serializer.RECID)
+                        qq.add(tailRecid)
+                        qq.add(headRecid)
+                        qq.add(headPrevRecid)
+                        return QueueLong(store = store, tailRecid = tailRecid, headRecid = headRecid, headPrevRecid = headPrevRecid)
+                    }
+
+                    expireCreateQueues =
+                            if (_expireCreateTTL == 0L) null
+                            else Array(segmentCount, { emptyLongQueue(it, createQ) })
+
+                    expireUpdateQueues =
+                            if (_expireUpdateTTL == 0L) null
+                            else Array(segmentCount, { emptyLongQueue(it, updateQ) })
+
+                    expireGetQueues =
+                            if (_expireGetTTL == 0L) null
+                            else Array(segmentCount, { emptyLongQueue(it, getQ) })
+
+                    nameCatalog[name + Keys.expireCreateQueues] = createQ.makeString("", ",", "")
+                    nameCatalog[name + Keys.expireUpdateQueues] = updateQ.makeString("", ",", "")
+                    nameCatalog[name + Keys.expireGetQueues] = getQ.makeString("", ",", "")
+
+
+                    db.nameCatalogSave(nameCatalog)
                 } else {
-                    nameCatalog[name + Keys.counterRecids] = ""
-                    null
-                }
+                    //open
+                    _keySerializer =
+                            db.nameCatalogGetClass(nameCatalog, name + Keys.keySerializer)
+                                    ?: _keySerializer
+                    _valueSerializer =
+                            db.nameCatalogGetClass(nameCatalog, name + Keys.valueSerializer)
+                                    ?: _valueSerializer
 
-                nameCatalog[name + Keys.expireCreateTTL] = _expireCreateTTL.toString()
-                nameCatalog[name + Keys.expireUpdateTTL] = _expireUpdateTTL.toString()
-                nameCatalog[name + Keys.expireGetTTL] = _expireGetTTL.toString()
+                    _valueInline = nameCatalog[name + Keys.valueInline]!!.toBoolean()
 
-                var createQ = LongArrayList()
-                var updateQ = LongArrayList()
-                var getQ = LongArrayList()
-
-
-                fun emptyLongQueue(segment: Int, qq:LongArrayList): QueueLong {
-                    val store = stores[segment]
-                    val q = store.put(null, QueueLong.Node.SERIALIZER);
-                    val tailRecid = store.put(q, Serializer.RECID)
-                    val headRecid = store.put(q, Serializer.RECID)
-                    val headPrevRecid = store.put(0L, Serializer.RECID)
-                    qq.add(tailRecid)
-                    qq.add(headRecid)
-                    qq.add(headPrevRecid)
-                    return QueueLong(store = store, tailRecid = tailRecid, headRecid = headRecid, headPrevRecid = headPrevRecid)
-                }
-
-                expireCreateQueues =
-                        if (_expireCreateTTL == 0L) null
-                        else Array(segmentCount, { emptyLongQueue(it, createQ) })
-
-                expireUpdateQueues =
-                        if (_expireUpdateTTL == 0L) null
-                        else Array(segmentCount, { emptyLongQueue(it, updateQ) })
-
-                expireGetQueues =
-                        if (_expireGetTTL == 0L) null
-                        else Array(segmentCount, { emptyLongQueue(it, getQ) })
-
-                nameCatalog[name+Keys.expireCreateQueues] = createQ.makeString("",",","")
-                nameCatalog[name+Keys.expireUpdateQueues] = updateQ.makeString("",",","")
-                nameCatalog[name+Keys.expireGetQueues] = getQ.makeString("",",","")
-
-
-                db.nameCatalogSave(nameCatalog)
-            }else{
-                //open
-                _keySerializer =
-                        db.nameCatalogGetClass(nameCatalog, name+Keys.keySerializer)
-                                ?: _keySerializer
-                _valueSerializer =
-                        db.nameCatalogGetClass(nameCatalog, name+Keys.valueSerializer)
-                                ?: _valueSerializer
-
-                _valueInline = nameCatalog[name+Keys.valueInline]!!.toBoolean()
-
-                hashSeed = nameCatalog[name+Keys.hashSeed]!!.toInt()
-                rootRecids = nameCatalog[name+Keys.rootRecids]!!.split(",").map { it.toLong() }.toLongArray()
-                val counterRecidsStr = nameCatalog[name+Keys.counterRecids]!!
-                counterRecids = if(""==counterRecidsStr)null
+                    hashSeed = nameCatalog[name + Keys.hashSeed]!!.toInt()
+                    rootRecids = nameCatalog[name + Keys.rootRecids]!!.split(",").map { it.toLong() }.toLongArray()
+                    val counterRecidsStr = nameCatalog[name + Keys.counterRecids]!!
+                    counterRecids = if ("" == counterRecidsStr) null
                     else counterRecidsStr.split(",").map { it.toLong() }.toLongArray()
 
-                _concShift = nameCatalog[name + Keys.concShift]!!.toInt()
-                _dirShift = nameCatalog[name + Keys.dirShift]!!.toInt()
-                _levels = nameCatalog[name + Keys.levels]!!.toInt()
-                _removeCollapsesIndexTree = nameCatalog[name + Keys.removeCollapsesIndexTree]!!.toBoolean()
+                    _concShift = nameCatalog[name + Keys.concShift]!!.toInt()
+                    _dirShift = nameCatalog[name + Keys.dirShift]!!.toInt()
+                    _levels = nameCatalog[name + Keys.levels]!!.toInt()
+                    _removeCollapsesIndexTree = nameCatalog[name + Keys.removeCollapsesIndexTree]!!.toBoolean()
 
 
-                _expireCreateTTL = nameCatalog[name + Keys.expireCreateTTL]!!.toLong()
-                _expireUpdateTTL = nameCatalog[name + Keys.expireUpdateTTL]!!.toLong()
-                _expireGetTTL =  nameCatalog[name + Keys.expireGetTTL]!!.toLong()
+                    _expireCreateTTL = nameCatalog[name + Keys.expireCreateTTL]!!.toLong()
+                    _expireUpdateTTL = nameCatalog[name + Keys.expireUpdateTTL]!!.toLong()
+                    _expireGetTTL = nameCatalog[name + Keys.expireGetTTL]!!.toLong()
 
 
-                fun queues(ttl:Long, queuesName:String):Array<QueueLong>?{
-                    if(ttl==0L)
-                        return null
-                    val rr = nameCatalog[queuesName]!!.split(",").map{it.toLong()}.toLongArray()
-                    if(rr.size!=segmentCount*3)
-                        throw DBException.WrongConfiguration("wrong segment count");
-                    return Array(segmentCount, { segment ->
-                        QueueLong(store=stores[segment],
-                                tailRecid = rr[segment*3+0], headRecid = rr[segment*3+1], headPrevRecid = rr[segment*3+2]
-                                )
-                    })
-                }
-
-                expireCreateQueues = queues(_expireCreateTTL, name+Keys.expireCreateQueues)
-                expireUpdateQueues = queues(_expireUpdateTTL, name+Keys.expireUpdateQueues)
-                expireGetQueues = queues(_expireGetTTL, name+Keys.expireGetQueues)
-            }
-
-            if (_expireExecutor != null)
-                db.executors.add(_expireExecutor!!)
-
-
-            val indexTrees = Array<MutableLongLongMap>(1.shl(_concShift),{segment->
-                IndexTreeLongLongMap(
-                        store=stores[segment],
-                        rootRecid=rootRecids[segment],
-                        dirShift = _dirShift,
-                        levels=_levels,
-                        collapseOnRemove = _removeCollapsesIndexTree
-                )
-            })
-
-            var valueLoader2 = _valueLoader
-            val expireOverflow = _expireOverflow
-            if(expireOverflow!=null) {
-                //load non existing values from overflow
-                valueLoader2 = { key-> expireOverflow[key]}
-
-                //forward modifications to overflow
-                val listener = MapModificationListener<K,V>{ key, oldVal, newVal, triggered ->
-                    if(!triggered && newVal==null && oldVal!=null){
-                        //removal, also remove from overflow map
-                        val oldVal2 = expireOverflow.remove(key)
-                        if(oldVal2!=null && _valueSerializer.equals(oldVal as V, oldVal2 as V)){
-                            Utils.LOG.warning { "Key also removed from overflow Map, but value in overflow Map differs" }
-                        }
-                    }else if(triggered && newVal==null){
-                        // triggered by eviction, put evicted entry into overflow map
-                        expireOverflow.put(key, oldVal)
+                    fun queues(ttl: Long, queuesName: String): Array<QueueLong>? {
+                        if (ttl == 0L)
+                            return null
+                        val rr = nameCatalog[queuesName]!!.split(",").map { it.toLong() }.toLongArray()
+                        if (rr.size != segmentCount * 3)
+                            throw DBException.WrongConfiguration("wrong segment count");
+                        return Array(segmentCount, { segment ->
+                            QueueLong(store = stores[segment],
+                                    tailRecid = rr[segment * 3 + 0], headRecid = rr[segment * 3 + 1], headPrevRecid = rr[segment * 3 + 2]
+                            )
+                        })
                     }
-                }
-                _modListeners.add(listener)
-            }
 
-            val htreemap = HTreeMap(
-                    keySerializer = _keySerializer,
-                    valueSerializer = _valueSerializer,
-                    valueInline = _valueInline,
-                    concShift = _concShift,
-                    dirShift = _dirShift,
-                    levels = _levels,
-                    stores = stores,
-                    indexTrees = indexTrees,
-                    hashSeed = hashSeed,
-                    counterRecids = counterRecids,
-                    expireCreateTTL = _expireCreateTTL,
-                    expireUpdateTTL = _expireUpdateTTL,
-                    expireGetTTL = _expireGetTTL,
-                    expireMaxSize = _expireMaxSize,
-                    expireStoreSize = _expireStoreSize,
-                    expireCreateQueues = expireCreateQueues,
-                    expireUpdateQueues = expireUpdateQueues,
-                    expireGetQueues = expireGetQueues,
-                    expireExecutor = _expireExecutor,
-                    expireExecutorPeriod = _expireExecutorPeriod,
-                    expireCompactThreshold = _expireCompactThreshold,
-                    threadSafe = true,
-                    valueLoader = valueLoader2,
-                    modificationListeners = if(_modListeners.isEmpty()) null else _modListeners.toTypedArray(),
-                    closeable = db
-            )
-            return htreemap
+                    expireCreateQueues = queues(_expireCreateTTL, name + Keys.expireCreateQueues)
+                    expireUpdateQueues = queues(_expireUpdateTTL, name + Keys.expireUpdateQueues)
+                    expireGetQueues = queues(_expireGetTTL, name + Keys.expireGetQueues)
+                }
+
+                if (_expireExecutor != null)
+                    db.executors.add(_expireExecutor!!)
+
+
+                val indexTrees = Array<MutableLongLongMap>(1.shl(_concShift), { segment ->
+                    IndexTreeLongLongMap(
+                            store = stores[segment],
+                            rootRecid = rootRecids[segment],
+                            dirShift = _dirShift,
+                            levels = _levels,
+                            collapseOnRemove = _removeCollapsesIndexTree
+                    )
+                })
+
+                var valueLoader2 = _valueLoader
+                val expireOverflow = _expireOverflow
+                if (expireOverflow != null) {
+                    //load non existing values from overflow
+                    valueLoader2 = { key -> expireOverflow[key] }
+
+                    //forward modifications to overflow
+                    val listener = MapModificationListener<K, V> { key, oldVal, newVal, triggered ->
+                        if (!triggered && newVal == null && oldVal != null) {
+                            //removal, also remove from overflow map
+                            val oldVal2 = expireOverflow.remove(key)
+                            if (oldVal2 != null && _valueSerializer.equals(oldVal as V, oldVal2 as V)) {
+                                Utils.LOG.warning { "Key also removed from overflow Map, but value in overflow Map differs" }
+                            }
+                        } else if (triggered && newVal == null) {
+                            // triggered by eviction, put evicted entry into overflow map
+                            expireOverflow.put(key, oldVal)
+                        }
+                    }
+                    _modListeners.add(listener)
+                }
+
+                val htreemap = HTreeMap(
+                        keySerializer = _keySerializer,
+                        valueSerializer = _valueSerializer,
+                        valueInline = _valueInline,
+                        concShift = _concShift,
+                        dirShift = _dirShift,
+                        levels = _levels,
+                        stores = stores,
+                        indexTrees = indexTrees,
+                        hashSeed = hashSeed,
+                        counterRecids = counterRecids,
+                        expireCreateTTL = _expireCreateTTL,
+                        expireUpdateTTL = _expireUpdateTTL,
+                        expireGetTTL = _expireGetTTL,
+                        expireMaxSize = _expireMaxSize,
+                        expireStoreSize = _expireStoreSize,
+                        expireCreateQueues = expireCreateQueues,
+                        expireUpdateQueues = expireUpdateQueues,
+                        expireGetQueues = expireGetQueues,
+                        expireExecutor = _expireExecutor,
+                        expireExecutorPeriod = _expireExecutorPeriod,
+                        expireCompactThreshold = _expireCompactThreshold,
+                        threadSafe = true,
+                        valueLoader = valueLoader2,
+                        modificationListeners = if (_modListeners.isEmpty()) null else _modListeners.toTypedArray(),
+                        closeable = db
+                )
+                return htreemap
+            }
         }
     }
 
@@ -720,69 +735,71 @@ open class DB(
             rootRecidRecid:Long? = null,
             counterRecid:Long? = null
         ):BTreeMap<K,V>{
-            db.checkName(name)
-            val nameCatalog = db.nameCatalogLoad()
+            Utils.lockWrite(db.lock) {
+                db.checkName(name)
+                val nameCatalog = db.nameCatalogLoad()
 
-            val contains = nameCatalog.containsKey(name + Keys.type);
-            if (create != null) {
-                if (contains && create)
-                    throw DBException.WrongConfiguration("Named record already exists: $name")
-                if (!create && !contains)
-                    throw DBException.WrongConfiguration("Named record does not exist: $name")
-            }
-
-            var rootRecidRecid2:Long
-            var counterRecid2:Long
-
-            if((create!=null && create) || !contains) {
-                //create
-                nameCatalog[name + Keys.type] = "TreeMap"
-                db.nameCatalogPutClass(nameCatalog, name + Keys.keySerializer, _keySerializer)
-                db.nameCatalogPutClass(nameCatalog, name + Keys.valueSerializer, _valueSerializer)
-
-                rootRecidRecid2 = rootRecidRecid
-                        ?: BTreeMap.putEmptyRoot(db.store, _keySerializer, _valueSerializer)
-                nameCatalog[name + Keys.rootRecidRecid] = rootRecidRecid2.toString()
-
-                counterRecid2 =
-                        if (_counterEnable) counterRecid ?: db.store.put(0L, Serializer.LONG)
-                        else 0L
-                nameCatalog[name + Keys.counterRecid] = counterRecid2.toString()
-
-                nameCatalog[name + Keys.maxNodeSize] = _maxNodeSize.toString()
-
-                db.nameCatalogSave(nameCatalog)
-            }else{
-                //load
-                val type = nameCatalog[name + Keys.type];
-                if("TreeMap"!=type){
-                    throw DBException.WrongConfiguration("Wrong collection type, expected 'TreeMap', was '$type'")
+                val contains = nameCatalog.containsKey(name + Keys.type);
+                if (create != null) {
+                    if (contains && create)
+                        throw DBException.WrongConfiguration("Named record already exists: $name")
+                    if (!create && !contains)
+                        throw DBException.WrongConfiguration("Named record does not exist: $name")
                 }
-                rootRecidRecid2 = nameCatalog[name+Keys.rootRecidRecid]!!.toLong()
 
-                _keySerializer =
-                        db.nameCatalogGetClass(nameCatalog, name+Keys.keySerializer)
-                                ?: _keySerializer
-                _valueSerializer =
-                        db.nameCatalogGetClass(nameCatalog, name+Keys.valueSerializer)
-                                ?: _valueSerializer
+                var rootRecidRecid2: Long
+                var counterRecid2: Long
 
-                counterRecid2 = nameCatalog[name+Keys.counterRecid]!!.toLong()
-                _maxNodeSize = nameCatalog[name+Keys.maxNodeSize]!!.toInt()
+                if ((create != null && create) || !contains) {
+                    //create
+                    nameCatalog[name + Keys.type] = "TreeMap"
+                    db.nameCatalogPutClass(nameCatalog, name + Keys.keySerializer, _keySerializer)
+                    db.nameCatalogPutClass(nameCatalog, name + Keys.valueSerializer, _valueSerializer)
+
+                    rootRecidRecid2 = rootRecidRecid
+                            ?: BTreeMap.putEmptyRoot(db.store, _keySerializer, _valueSerializer)
+                    nameCatalog[name + Keys.rootRecidRecid] = rootRecidRecid2.toString()
+
+                    counterRecid2 =
+                            if (_counterEnable) counterRecid ?: db.store.put(0L, Serializer.LONG)
+                            else 0L
+                    nameCatalog[name + Keys.counterRecid] = counterRecid2.toString()
+
+                    nameCatalog[name + Keys.maxNodeSize] = _maxNodeSize.toString()
+
+                    db.nameCatalogSave(nameCatalog)
+                } else {
+                    //load
+                    val type = nameCatalog[name + Keys.type];
+                    if ("TreeMap" != type) {
+                        throw DBException.WrongConfiguration("Wrong collection type, expected 'TreeMap', was '$type'")
+                    }
+                    rootRecidRecid2 = nameCatalog[name + Keys.rootRecidRecid]!!.toLong()
+
+                    _keySerializer =
+                            db.nameCatalogGetClass(nameCatalog, name + Keys.keySerializer)
+                                    ?: _keySerializer
+                    _valueSerializer =
+                            db.nameCatalogGetClass(nameCatalog, name + Keys.valueSerializer)
+                                    ?: _valueSerializer
+
+                    counterRecid2 = nameCatalog[name + Keys.counterRecid]!!.toLong()
+                    _maxNodeSize = nameCatalog[name + Keys.maxNodeSize]!!.toInt()
+                }
+
+
+                val btreemap = BTreeMap(
+                        keySerializer = _keySerializer,
+                        valueSerializer = _valueSerializer,
+                        rootRecidRecid = rootRecidRecid2,
+                        store = db.store,
+                        maxNodeSize = _maxNodeSize,
+                        comparator = _keySerializer, //TODO custom comparator
+                        threadSafe = _threadSafe, //TODO threadSafe in catalog?
+                        counterRecid = counterRecid2
+                )
+                return btreemap
             }
-
-
-            val btreemap = BTreeMap(
-                    keySerializer = _keySerializer,
-                    valueSerializer = _valueSerializer,
-                    rootRecidRecid = rootRecidRecid2,
-                    store = db.store,
-                    maxNodeSize = _maxNodeSize,
-                    comparator = _keySerializer, //TODO custom comparator
-                    threadSafe = _threadSafe, //TODO threadSafe in catalog?
-                    counterRecid = counterRecid2
-            )
-            return btreemap
         }
     }
 
@@ -792,5 +809,128 @@ open class DB(
             TreeMapMaker<K,V>(this, name)
                     .keySerializer(keySerializer)
                     .valueSerializer(valueSerializer)
+
+
+    abstract class Maker<E>(){
+        fun create() = make2( true)
+        fun createOrOpen() = make2(null)
+        fun open() = make2( false)
+
+        protected fun make2(create:Boolean?):E{
+            Utils.lockWrite(db.lock){
+                val catalog = db.nameCatalogLoad()
+                //check existence
+                val typeFromDb = catalog[name+Keys.type]
+                if (create != null) {
+                    if (typeFromDb!=null && create)
+                        throw DBException.WrongConfiguration("Named record already exists: $name")
+                    if (!create && typeFromDb==null)
+                        throw DBException.WrongConfiguration("Named record does not exist: $name")
+                }
+                //check type
+                if(typeFromDb!=null && type!=typeFromDb){
+                    throw DBException.WrongConfiguration("Wrong type for named record '$name'. Expected '$type', but catalog has '$typeFromDb'")
+                }
+
+                if(typeFromDb!=null)
+                    return open2(catalog)
+
+                val ret = create2(catalog)
+                db.nameCatalogSave(catalog)
+                return ret
+            }
+        }
+
+        abstract protected fun create2(catalog:SortedMap<String,String>):E
+        abstract protected fun open2(catalog:SortedMap<String,String>):E
+
+        abstract protected val db:DB
+        abstract protected val name:String
+        abstract protected val type:String
+    }
+
+    class AtomicIntegerMaker(override val db:DB, override val name:String, val value:Int=0):Maker<Atomic.Integer>(){
+
+        override val type = "AtomicInteger"
+
+        override fun create2(catalog: SortedMap<String, String>): Atomic.Integer {
+            val recid = db.store.put(value, Serializer.INTEGER)
+            catalog[name+Keys.recid] = recid.toString()
+            return Atomic.Integer(db.store, recid)
+        }
+
+        override fun open2(catalog: SortedMap<String, String>): Atomic.Integer {
+            val recid = catalog[name+Keys.recid]!!.toLong()
+            return Atomic.Integer(db.store, recid)
+        }
+    }
+
+    fun atomicInteger(name:String) = AtomicIntegerMaker(this, name)
+
+    fun atomicInteger(name:String, value:Int) = AtomicIntegerMaker(this, name, value)
+
+
+
+    class AtomicLongMaker(override val db:DB, override val name:String, val value:Long=0):Maker<Atomic.Long>(){
+
+        override val type = "AtomicLong"
+
+        override fun create2(catalog: SortedMap<String, String>): Atomic.Long {
+            val recid = db.store.put(value, Serializer.LONG)
+            catalog[name+Keys.recid] = recid.toString()
+            return Atomic.Long(db.store, recid)
+        }
+
+        override fun open2(catalog: SortedMap<String, String>): Atomic.Long {
+            val recid = catalog[name+Keys.recid]!!.toLong()
+            return Atomic.Long(db.store, recid)
+        }
+    }
+
+    fun atomicLong(name:String) = AtomicLongMaker(this, name)
+
+    fun atomicLong(name:String, value:Long) = AtomicLongMaker(this, name, value)
+
+
+    class AtomicBooleanMaker(override val db:DB, override val name:String, val value:Boolean=false):Maker<Atomic.Boolean>(){
+
+        override val type = "AtomicBoolean"
+
+        override fun create2(catalog: SortedMap<String, String>): Atomic.Boolean {
+            val recid = db.store.put(value, Serializer.BOOLEAN)
+            catalog[name+Keys.recid] = recid.toString()
+            return Atomic.Boolean(db.store, recid)
+        }
+
+        override fun open2(catalog: SortedMap<String, String>): Atomic.Boolean {
+            val recid = catalog[name+Keys.recid]!!.toLong()
+            return Atomic.Boolean(db.store, recid)
+        }
+    }
+
+    fun atomicBoolean(name:String) = AtomicBooleanMaker(this, name)
+
+    fun atomicBoolean(name:String, value:Boolean) = AtomicBooleanMaker(this, name, value)
+
+
+    class AtomicStringMaker(override val db:DB, override val name:String, val value:String?=null):Maker<Atomic.String>(){
+
+        override val type = "AtomicString"
+
+        override fun create2(catalog: SortedMap<String, String>): Atomic.String {
+            val recid = db.store.put(value, Serializer.STRING_NOSIZE)
+            catalog[name+Keys.recid] = recid.toString()
+            return Atomic.String(db.store, recid)
+        }
+
+        override fun open2(catalog: SortedMap<String, String>): Atomic.String {
+            val recid = catalog[name+Keys.recid]!!.toLong()
+            return Atomic.String(db.store, recid)
+        }
+    }
+
+    fun atomicString(name:String) = AtomicStringMaker(this, name)
+
+    fun atomicString(name:String, value:String?) = AtomicStringMaker(this, name, value)
 
 }
