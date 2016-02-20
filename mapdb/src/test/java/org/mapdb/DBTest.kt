@@ -27,6 +27,7 @@ class DBTest{
     @Test fun name_catalog_with(){
         val db = DB(store=StoreTrivial(), storeOpened = false)
 
+        db.lock.writeLock().lock()
         var nameCatalog = db.nameCatalogLoad()
         nameCatalog.put("aaa", "bbbb")
         db.nameCatalogSave(nameCatalog)
@@ -39,6 +40,7 @@ class DBTest{
     @Test fun name_catalog_singleton(){
         val db = DB(store=StoreTrivial(), storeOpened = false)
 
+        db.lock.writeLock().lock()
         var nameCatalog = db.nameCatalogLoad()
         db.nameCatalogPutClass(nameCatalog, "aaa", Serializer.BIG_DECIMAL)
         assertEquals(1, nameCatalog.size)
@@ -67,6 +69,7 @@ class DBTest{
         assertEquals(Serializer.BIG_DECIMAL, hashmap.keySerializer)
         assertEquals(unresolvable, hashmap.valueSerializer)
 
+        db.lock.writeLock().lock()
         val nameCatalog = db.nameCatalogLoad()
         assertTrue(2<nameCatalog.size)
         assertEquals("HashMap",nameCatalog["aa.type"])
@@ -87,6 +90,7 @@ class DBTest{
                 .removeCollapsesIndexTreeDisable()
                 .create()
 
+        db.lock.writeLock().lock()
         val p = db.nameCatalogParamsFor("aa")
 
         assertEquals(17, p.size)
@@ -123,7 +127,7 @@ class DBTest{
 
         val hmap = db.hashMap("aa")
                 .create()
-
+        db.lock.writeLock().lock()
         val p = db.nameCatalogParamsFor("aa")
 
         assertEquals(17, p.size)
@@ -170,7 +174,7 @@ class DBTest{
                 .expireAfterUpdate(20)
                 .expireAfterGet(30)
                 .create()
-
+        db.lock.writeLock().lock()
         val p = db.nameCatalogParamsFor("aa")
 
         assertEquals(17, p.size)
@@ -329,6 +333,7 @@ class DBTest{
         assertEquals(Serializer.BIG_DECIMAL, map.keySerializer)
         assertEquals(unresolvable, map.valueSerializer)
 
+        db.lock.writeLock().lock()
         val nameCatalog = db.nameCatalogLoad()
         assertTrue(2<nameCatalog.size)
         assertEquals("TreeMap",nameCatalog["aa.type"])
@@ -342,7 +347,7 @@ class DBTest{
                 .counterEnable()
                 .maxNodeSize(16)
                 .create()
-
+        db.lock.writeLock().lock()
         val p = db.nameCatalogParamsFor("aa")
 
         assertEquals(6, p.size)
@@ -360,9 +365,10 @@ class DBTest{
     @Test fun treeMap_Create_Default(){
         val db = DB(store=StoreTrivial(), storeOpened = false)
 
-        val map = db.treeMap("aa")
+        val map = db.treeMap<String,String>("aa")
                 .create()
 
+        db.lock.writeLock().lock()
         val p = db.nameCatalogParamsFor("aa")
 
         assertEquals(6, p.size)

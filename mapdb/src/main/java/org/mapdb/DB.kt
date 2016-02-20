@@ -630,9 +630,11 @@ open class DB(
     }
 
     class TreeMapMaker<K,V>(
-            private val db:DB,
-            private val name:String
-    ){
+            override val db:DB,
+            override  val name:String
+    ):Maker<BTreeMap<K,V>>(){
+
+        override val type = "TreeMap"
 
         private var _keySerializer:Serializer<K> = Serializer.JAVA as Serializer<K>
         private var _valueSerializer:Serializer<V> = Serializer.JAVA as Serializer<V>
@@ -641,6 +643,9 @@ open class DB(
         private var _valueLoader:((key:K)->V)? = null
         private var _modListeners:MutableList<MapModificationListener<K,V>>? = null
         private var _threadSafe = true;
+
+        private var _rootRecidRecid:Long? = null
+        private var _counterRecid:Long? = null
 
 
         fun <A> keySerializer(keySerializer:Serializer<A>):TreeMapMaker<A,V>{
@@ -686,10 +691,6 @@ open class DB(
         }
 
 
-        fun create() = make( true)
-        fun createOrOpen() = make(null)
-        fun open() = make( false)
-
         fun import(iterator:Iterator<Pair<K,V>>):BTreeMap<K,V>{
             val consumer = import()
             while(iterator.hasNext()){
@@ -717,94 +718,72 @@ open class DB(
 
                 override fun finish(): BTreeMap<K, V> {
                     consumer.finish()
-                    val rootRecidRecid = consumer.rootRecidRecid
+                    this@TreeMapMaker._rootRecidRecid = consumer.rootRecidRecid
                         ?: throw AssertionError()
-                    val counterRecid =
+                    this@TreeMapMaker._counterRecid =
                             if(_counterEnable) db.store.put(consumer.counter, Serializer.LONG)
                             else 0L
-                    return make(true, rootRecidRecid=rootRecidRecid, counterRecid=counterRecid)
+                    return this@TreeMapMaker.make2(create=true)
                 }
 
             }
         }
 
+        override fun create2(catalog: SortedMap<String, String>): BTreeMap<K, V> {
+            db.nameCatalogPutClass(catalog, name + Keys.keySerializer, _keySerializer)
+            db.nameCatalogPutClass(catalog, name + Keys.valueSerializer, _valueSerializer)
 
+            val rootRecidRecid2 = _rootRecidRecid
+                    ?: BTreeMap.putEmptyRoot(db.store, _keySerializer, _valueSerializer)
+            catalog[name + Keys.rootRecidRecid] = rootRecidRecid2.toString()
 
-        internal fun make(
-            create:Boolean?,
-            rootRecidRecid:Long? = null,
-            counterRecid:Long? = null
-        ):BTreeMap<K,V>{
-            Utils.lockWrite(db.lock) {
-                db.checkName(name)
-                val nameCatalog = db.nameCatalogLoad()
+            val counterRecid2 =
+                    if (_counterEnable) _counterRecid ?: db.store.put(0L, Serializer.LONG)
+                    else 0L
+            catalog[name + Keys.counterRecid] = counterRecid2.toString()
 
-                val contains = nameCatalog.containsKey(name + Keys.type);
-                if (create != null) {
-                    if (contains && create)
-                        throw DBException.WrongConfiguration("Named record already exists: $name")
-                    if (!create && !contains)
-                        throw DBException.WrongConfiguration("Named record does not exist: $name")
-                }
+            catalog[name + Keys.maxNodeSize] = _maxNodeSize.toString()
 
-                var rootRecidRecid2: Long
-                var counterRecid2: Long
-
-                if ((create != null && create) || !contains) {
-                    //create
-                    nameCatalog[name + Keys.type] = "TreeMap"
-                    db.nameCatalogPutClass(nameCatalog, name + Keys.keySerializer, _keySerializer)
-                    db.nameCatalogPutClass(nameCatalog, name + Keys.valueSerializer, _valueSerializer)
-
-                    rootRecidRecid2 = rootRecidRecid
-                            ?: BTreeMap.putEmptyRoot(db.store, _keySerializer, _valueSerializer)
-                    nameCatalog[name + Keys.rootRecidRecid] = rootRecidRecid2.toString()
-
-                    counterRecid2 =
-                            if (_counterEnable) counterRecid ?: db.store.put(0L, Serializer.LONG)
-                            else 0L
-                    nameCatalog[name + Keys.counterRecid] = counterRecid2.toString()
-
-                    nameCatalog[name + Keys.maxNodeSize] = _maxNodeSize.toString()
-
-                    db.nameCatalogSave(nameCatalog)
-                } else {
-                    //load
-                    val type = nameCatalog[name + Keys.type];
-                    if ("TreeMap" != type) {
-                        throw DBException.WrongConfiguration("Wrong collection type, expected 'TreeMap', was '$type'")
-                    }
-                    rootRecidRecid2 = nameCatalog[name + Keys.rootRecidRecid]!!.toLong()
-
-                    _keySerializer =
-                            db.nameCatalogGetClass(nameCatalog, name + Keys.keySerializer)
-                                    ?: _keySerializer
-                    _valueSerializer =
-                            db.nameCatalogGetClass(nameCatalog, name + Keys.valueSerializer)
-                                    ?: _valueSerializer
-
-                    counterRecid2 = nameCatalog[name + Keys.counterRecid]!!.toLong()
-                    _maxNodeSize = nameCatalog[name + Keys.maxNodeSize]!!.toInt()
-                }
-
-
-                val btreemap = BTreeMap(
-                        keySerializer = _keySerializer,
-                        valueSerializer = _valueSerializer,
-                        rootRecidRecid = rootRecidRecid2,
-                        store = db.store,
-                        maxNodeSize = _maxNodeSize,
-                        comparator = _keySerializer, //TODO custom comparator
-                        threadSafe = _threadSafe, //TODO threadSafe in catalog?
-                        counterRecid = counterRecid2
-                )
-                return btreemap
-            }
+            return BTreeMap(
+                    keySerializer = _keySerializer,
+                    valueSerializer = _valueSerializer,
+                    rootRecidRecid = rootRecidRecid2,
+                    store = db.store,
+                    maxNodeSize = _maxNodeSize,
+                    comparator = _keySerializer, //TODO custom comparator
+                    threadSafe = _threadSafe, //TODO threadSafe in catalog?
+                    counterRecid = counterRecid2
+            )
         }
+
+        override fun open2(catalog: SortedMap<String, String>): BTreeMap<K, V> {
+            val rootRecidRecid2 = catalog[name + Keys.rootRecidRecid]!!.toLong()
+
+            _keySerializer =
+                    db.nameCatalogGetClass(catalog, name + Keys.keySerializer)
+                            ?: _keySerializer
+            _valueSerializer =
+                    db.nameCatalogGetClass(catalog, name + Keys.valueSerializer)
+                            ?: _valueSerializer
+
+            val counterRecid2 = catalog[name + Keys.counterRecid]!!.toLong()
+            _maxNodeSize = catalog[name + Keys.maxNodeSize]!!.toInt()
+            return BTreeMap(
+                    keySerializer = _keySerializer,
+                    valueSerializer = _valueSerializer,
+                    rootRecidRecid = rootRecidRecid2,
+                    store = db.store,
+                    maxNodeSize = _maxNodeSize,
+                    comparator = _keySerializer, //TODO custom comparator
+                    threadSafe = _threadSafe, //TODO threadSafe in catalog?
+                    counterRecid = counterRecid2
+            )
+        }
+
     }
 
 
-    fun treeMap(name:String):TreeMapMaker<*,*> = TreeMapMaker<Any?,Any?>(this, name)
+    fun <K,V> treeMap(name:String):TreeMapMaker<K,V> = TreeMapMaker(this, name)
     fun <K,V> treeMap(name:String, keySerializer: Serializer<K>, valueSerializer: Serializer<V>) =
             TreeMapMaker<K,V>(this, name)
                     .keySerializer(keySerializer)
@@ -812,9 +791,9 @@ open class DB(
 
 
     abstract class Maker<E>(){
-        fun create() = make2( true)
-        fun createOrOpen() = make2(null)
-        fun open() = make2( false)
+        fun create():E = make2( true)
+        fun createOrOpen():E = make2(null)
+        fun open():E = make2( false)
 
         protected fun make2(create:Boolean?):E{
             Utils.lockWrite(db.lock){
@@ -835,6 +814,7 @@ open class DB(
                 if(typeFromDb!=null)
                     return open2(catalog)
 
+                catalog.put(name+Keys.type,type)
                 val ret = create2(catalog)
                 db.nameCatalogSave(catalog)
                 return ret
