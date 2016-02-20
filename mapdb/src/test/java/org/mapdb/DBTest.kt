@@ -365,7 +365,7 @@ class DBTest{
     @Test fun treeMap_Create_Default(){
         val db = DB(store=StoreTrivial(), storeOpened = false)
 
-        val map = db.treeMap<String,String>("aa")
+        val map = db.treeMap("aa")
                 .create()
 
         db.lock.writeLock().lock()
