@@ -794,7 +794,6 @@ class BTreeMapTest {
         map.verify()
 
         fun checkNode(key:Int, expectedLowKey:Int?) {
-            println("key $key")
             var iter = map.descendingLeafIterator(key)
             if(expectedLowKey==null){
                 assertFalse(iter.hasNext())
