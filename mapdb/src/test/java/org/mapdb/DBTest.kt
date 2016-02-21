@@ -437,7 +437,7 @@ class DBTest{
     }
 
 
-    @Test fun treeSet_open(){
+    @Test fun treeSet_base(){
         val db = DB(store=StoreTrivial(), storeOpened = false)
 
         val set = db.treeSet("set").serializer(Serializer.INTEGER).make();
@@ -451,4 +451,20 @@ class DBTest{
 
         assertEquals("org.mapdb.Serializer#INTEGER", catalog["set"+ DB.Keys.serializer])
     }
+
+    @Test fun hashSet_base(){
+        val db = DB(store=StoreTrivial(), storeOpened = false)
+
+        val set = db.hashSet("set").serializer(Serializer.INTEGER).make();
+        set.add(1)
+        assertEquals(1, set.size)
+
+        db.lock.writeLock().lock()
+        val catalog = db.nameCatalogParamsFor("set")
+        assertNull(catalog["set"+ DB.Keys.keySerializer])
+        assertNull(catalog["set"+ DB.Keys.valueSerializer])
+
+        assertEquals("org.mapdb.Serializer#INTEGER", catalog["set"+ DB.Keys.serializer])
+    }
+
 }

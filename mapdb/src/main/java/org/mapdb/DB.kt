@@ -431,10 +431,10 @@ open class DB(
                 rootRecidsStr += (if (i == 0) "" else ",") + rootRecid
             }
 
-            catalog[name + Keys.type] = "HashMap"
-            db.nameCatalogPutClass(catalog, name + Keys.keySerializer, _keySerializer)
-            db.nameCatalogPutClass(catalog, name + Keys.valueSerializer, _valueSerializer)
-
+            db.nameCatalogPutClass(catalog, name + if(hasValues) Keys.keySerializer else Keys.serializer, _keySerializer)
+            if(hasValues) {
+                db.nameCatalogPutClass(catalog, name + Keys.valueSerializer, _valueSerializer)
+            }
             catalog[name + Keys.valueInline] = _valueInline.toString()
 
             catalog[name + Keys.rootRecids] = rootRecidsStr
@@ -536,12 +536,12 @@ open class DB(
             val stores = Array(segmentCount, _storeFactory)
 
             _keySerializer =
-                    db.nameCatalogGetClass(catalog, name + Keys.keySerializer)
+                    db.nameCatalogGetClass(catalog, name + if(hasValues)Keys.keySerializer else Keys.serializer)
                             ?: _keySerializer
-            _valueSerializer =
-                    db.nameCatalogGetClass(catalog, name + Keys.valueSerializer)
-                            ?: _valueSerializer
-
+            _valueSerializer = if(!hasValues) BTreeMap.NO_VAL_SERIALIZER as Serializer<V>
+                    else {
+                       db.nameCatalogGetClass(catalog, name + Keys.valueSerializer)?: _valueSerializer
+                    }
             _valueInline = catalog[name + Keys.valueInline]!!.toBoolean()
 
             val hashSeed = catalog[name + Keys.hashSeed]!!.toInt()
@@ -887,7 +887,7 @@ open class DB(
     class HashSetMaker<E>(
             override val db:DB,
             override val name:String
-    ) :Maker<Set<E>>(){
+    ) :Maker<MutableSet<E>>(){
 
         protected val maker = HashMapMaker<E, Any?>(db, name, hasValues=false)
 
@@ -907,12 +907,12 @@ open class DB(
             maker.verify()
         }
 
-        override fun open2(catalog: SortedMap<String, String>): Set<E> {
-            return maker.open2(catalog).keys as Set<E>
+        override fun open2(catalog: SortedMap<String, String>): MutableSet<E> {
+            return maker.open2(catalog).keys as MutableSet<E>
         }
 
-        override fun create2(catalog: SortedMap<String, String>): Set<E> {
-            return maker.create2(catalog).keys as Set<E>
+        override fun create2(catalog: SortedMap<String, String>): MutableSet<E> {
+            return maker.create2(catalog).keys as MutableSet<E>
         }
 
         override val type = "HashSet"
