@@ -223,7 +223,8 @@ open class DB(
 
     class HashMapMaker<K,V>(
             override val db:DB,
-            override val name:String
+            override val name:String,
+            val hasValues:Boolean=true
     ):Maker<HTreeMap<K,V>>(){
 
         override val type = "HashMap"
@@ -525,7 +526,8 @@ open class DB(
                     threadSafe = true,
                     valueLoader = _valueLoader,
                     modificationListeners = if (_modListeners.isEmpty()) null else _modListeners.toTypedArray(),
-                    closeable = db
+                    closeable = db,
+                    hasValues = hasValues
             )
         }
 
@@ -611,7 +613,8 @@ open class DB(
                     threadSafe = true,
                     valueLoader = _valueLoader,
                     modificationListeners = if (_modListeners.isEmpty()) null else _modListeners.toTypedArray(),
-                    closeable = db
+                    closeable = db,
+                    hasValues = hasValues
             )
         }
 
@@ -648,7 +651,8 @@ open class DB(
 
     class TreeMapMaker<K,V>(
             override val db:DB,
-            override  val name:String
+            override val name:String,
+            val hasValues:Boolean=true
     ):Maker<BTreeMap<K,V>>(){
 
         override val type = "TreeMap"
@@ -697,7 +701,6 @@ open class DB(
             _threadSafe = false
             return this;
         }
-
 
         fun modificationListener(listener:MapModificationListener<K,V>):TreeMapMaker<K,V>{
             //TODO BTree modification listener
@@ -769,7 +772,8 @@ open class DB(
                     maxNodeSize = _maxNodeSize,
                     comparator = _keySerializer, //TODO custom comparator
                     threadSafe = _threadSafe, //TODO threadSafe in catalog?
-                    counterRecid = counterRecid2
+                    counterRecid = counterRecid2,
+                    hasValues = hasValues
             )
         }
 
@@ -793,7 +797,8 @@ open class DB(
                     maxNodeSize = _maxNodeSize,
                     comparator = _keySerializer, //TODO custom comparator
                     threadSafe = _threadSafe, //TODO threadSafe in catalog?
-                    counterRecid = counterRecid2
+                    counterRecid = counterRecid2,
+                    hasValues = hasValues
             )
         }
 
@@ -810,6 +815,50 @@ open class DB(
         }
     }
 
+    class TreeSetMaker<E>(
+            override val db:DB,
+            override val name:String
+    ) :Maker<NavigableSet<E>>(){
+
+        protected val maker = TreeMapMaker<E, Any?>(db, name, hasValues = false)
+
+
+        fun <A> serializer(serializer:Serializer<A>):TreeSetMaker<A>{
+            maker.keySerializer(serializer)
+            return this as TreeSetMaker<A>
+        }
+
+        fun maxNodeSize(size:Int):TreeSetMaker<E>{
+            maker.maxNodeSize(size)
+            return this;
+        }
+
+        fun counterEnable():TreeSetMaker<E>{
+            maker.counterEnable()
+            return this;
+        }
+
+
+        fun threadSafeDisable():TreeSetMaker<E>{
+            maker.threadSafeDisable()
+            return this;
+        }
+
+
+        override fun verify() {
+            maker.verify()
+        }
+
+        override fun open2(catalog: SortedMap<String, String>): NavigableSet<E> {
+            return maker.open2(catalog).keys as NavigableSet<E>
+        }
+
+        override fun create2(catalog: SortedMap<String, String>): NavigableSet<E> {
+            return maker.create2(catalog).keys as NavigableSet<E>
+        }
+
+        override val type = "TreeSet"
+    }
 
     fun treeMap(name:String):TreeMapMaker<*,*> = TreeMapMaker<Any?, Any?>(this, name)
     fun <K,V> treeMap(name:String, keySerializer: Serializer<K>, valueSerializer: Serializer<V>) =
@@ -817,9 +866,57 @@ open class DB(
                     .keySerializer(keySerializer)
                     .valueSerializer(valueSerializer)
 
+    fun treeSet(name:String):TreeSetMaker<*> = TreeSetMaker<Any?>(this, name)
+    fun <E> treeSet(name:String, serializer: Serializer<E>) =
+            TreeSetMaker<E>(this, name)
+                    .serializer(serializer)
+
+
+
+    class HashSetMaker<E>(
+            override val db:DB,
+            override val name:String
+    ) :Maker<Set<E>>(){
+
+        protected val maker = HashMapMaker<E, Any?>(db, name, hasValues=false)
+
+
+        fun <A> serializer(serializer:Serializer<A>):HashSetMaker<A>{
+            maker.keySerializer(serializer)
+            return this as HashSetMaker<A>
+        }
+
+        fun counterEnable():HashSetMaker<E>{
+            maker.counterEnable()
+            return this;
+        }
+
+
+        override fun verify() {
+            maker.verify()
+        }
+
+        override fun open2(catalog: SortedMap<String, String>): Set<E> {
+            return maker.open2(catalog).keys as Set<E>
+        }
+
+        override fun create2(catalog: SortedMap<String, String>): Set<E> {
+            return maker.create2(catalog).keys as Set<E>
+        }
+
+        override val type = "HashSet"
+    }
+
+    fun hashSet(name:String):HashSetMaker<*> = HashSetMaker<Any?>(this, name)
+    fun <E> hashSet(name:String, serializer: Serializer<E>) =
+            HashSetMaker<E>(this, name)
+                    .serializer(serializer)
+
+
 
     abstract class Maker<E>(){
         open fun create():E = make2( true)
+        open fun make():E = make2(null)
         open fun createOrOpen():E = make2(null)
         open fun open():E = make2( false)
 
@@ -850,9 +947,9 @@ open class DB(
             }
         }
 
-        open protected fun verify(){}
-        abstract protected fun create2(catalog:SortedMap<String,String>):E
-        abstract protected fun open2(catalog:SortedMap<String,String>):E
+        open internal fun verify(){}
+        abstract internal fun create2(catalog:SortedMap<String,String>):E
+        abstract internal fun open2(catalog:SortedMap<String,String>):E
 
         abstract protected val db:DB
         abstract protected val name:String

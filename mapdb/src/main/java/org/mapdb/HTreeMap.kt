@@ -40,7 +40,8 @@ class HTreeMap<K,V>(
         val threadSafe:Boolean,
         val valueLoader:((key:K)->V?)?,
         private val modificationListeners: Array<MapModificationListener<K,V>>?,
-        private val closeable:Closeable?
+        private val closeable:Closeable?,
+        val hasValues:Boolean = true
 
         //TODO queue is probably sequentially unsafe
 
@@ -935,7 +936,9 @@ class HTreeMap<K,V>(
 
 
         override fun add(element: K): Boolean {
-            throw UnsupportedOperationException("Can not add without val")
+            if(hasValues)
+                throw UnsupportedOperationException("Can not add without val")
+            return this@HTreeMap.put(element, "" as V)!=null //TODO default val for hashsets
         }
 
         override fun clear() {
