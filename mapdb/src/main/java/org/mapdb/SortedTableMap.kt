@@ -568,7 +568,7 @@ class SortedTableMap<K,V>(
 
     }
 
-    override val keys: NavigableSet<K> = BTreeMapJava.KeySet<K>(this as ConcurrentNavigableMap<K, Any>, true)
+    override val keys: NavigableSet<K> = BTreeMapJava.KeySet<K>(this as ConcurrentNavigableMapExtra<K, Any>, true)
 
     override fun navigableKeySet(): NavigableSet<K>? {
         return keys
@@ -679,12 +679,22 @@ class SortedTableMap<K,V>(
         return keySerializer //TODO custom comparator
     }
 
-    override fun firstKey(): K? {
+    override fun firstKey2(): K? {
         return firstEntry()?.key
     }
 
-    override fun lastKey(): K? {
+    override fun lastKey2(): K? {
         return lastEntry()?.key
+    }
+
+    override fun firstKey(): K {
+        return firstKey2()?:
+                throw NoSuchElementException()
+    }
+
+    override fun lastKey(): K {
+        return lastKey2()?:
+                throw NoSuchElementException()
     }
 
     override fun ceilingEntry(key: K?): MutableMap.MutableEntry<K, V>? {

@@ -368,9 +368,9 @@ public class BTreeMapJava {
             implements NavigableSet<E>,
             Closeable, Serializable {
 
-        protected final ConcurrentNavigableMap<E,Object> m;
+        protected final ConcurrentNavigableMap2<E,Object> m;
         private final boolean hasValues;
-        KeySet(ConcurrentNavigableMap<E,Object> map, boolean hasValues) {
+        KeySet(ConcurrentNavigableMap2<E,Object> map, boolean hasValues) {
             m = map;
             this.hasValues = hasValues;
         }
@@ -410,7 +410,7 @@ public class BTreeMapJava {
         @Override
         public E pollFirst() {
             while(true){
-                E e = m.firstKey();
+                E e = m.firstKey2();
                 if(e==null || m.remove(e)!=null){
                     return e;
                 }
@@ -420,7 +420,7 @@ public class BTreeMapJava {
         @Override
         public E pollLast() {
             while(true){
-                E e = m.lastKey();
+                E e = m.lastKey2();
                 if(e==null || m.remove(e)!=null){
                     return e;
                 }
@@ -464,16 +464,16 @@ public class BTreeMapJava {
                                       boolean fromInclusive,
                                       E toElement,
                                       boolean toInclusive) {
-            return new KeySet<E>(m.subMap(fromElement, fromInclusive,
+            return new KeySet<E>((ConcurrentNavigableMap2)m.subMap(fromElement, fromInclusive,
                     toElement,   toInclusive),hasValues);
         }
         @Override
         public NavigableSet<E> headSet(E toElement, boolean inclusive) {
-            return new KeySet<E>(m.headMap(toElement, inclusive),hasValues);
+            return new KeySet<E>((ConcurrentNavigableMap2)m.headMap(toElement, inclusive),hasValues);
         }
         @Override
         public NavigableSet<E> tailSet(E fromElement, boolean inclusive) {
-            return new KeySet<E>(m.tailMap(fromElement, inclusive),hasValues);
+            return new KeySet<E>((ConcurrentNavigableMap2)m.tailMap(fromElement, inclusive),hasValues);
         }
         @Override
         public NavigableSet<E> subSet(E fromElement, E toElement) {
@@ -489,7 +489,7 @@ public class BTreeMapJava {
         }
         @Override
         public NavigableSet<E> descendingSet() {
-            return new KeySet(m.descendingMap(),hasValues);
+            return new KeySet((ConcurrentNavigableMap2)m.descendingMap(),hasValues);
         }
 
         @Override
@@ -589,7 +589,7 @@ public class BTreeMapJava {
 
 
 
-    static protected  class SubMap<K,V> extends AbstractMap<K,V> implements  ConcurrentNavigableMap<K,V> {
+    static protected  class SubMap<K,V> extends AbstractMap<K,V> implements  ConcurrentNavigableMap2<K,V> {
 
         protected final ConcurrentNavigableMapExtra<K,V> m;
 
@@ -742,7 +742,7 @@ public class BTreeMapJava {
             if(tooLow(key))return null;
 
             if(tooHigh(key))
-                return lastKey();
+                return lastKey2();
 
             K r = m.lowerKey(key);
             return r!=null && !tooLow(r) ? r :null;
@@ -768,7 +768,7 @@ public class BTreeMapJava {
             if(tooLow(key)) return null;
 
             if(tooHigh(key)){
-                return lastKey();
+                return lastKey2();
             }
 
             K ret = m.floorKey(key);
@@ -795,7 +795,7 @@ public class BTreeMapJava {
             if(tooHigh(key)) return null;
 
             if(tooLow(key)){
-                return firstKey();
+                return firstKey2();
             }
 
             K ret = m.ceilingKey(key);
@@ -816,25 +816,38 @@ public class BTreeMapJava {
         }
 
 
-        @Override
-        public K firstKey() {
+
+        public K firstKey2() {
             K k =
                     lo==null ?
-                            m.firstKey():
+                            m.firstKey2():
                             m.findHigherKey(lo, loInclusive);
             return k!=null && inBounds(k)? k : null;
         }
 
-        @Override
-        public K lastKey() {
+        public K lastKey2() {
             K k =
                     hi==null ?
-                            m.lastKey():
+                            m.lastKey2():
                             m.findLowerKey(hi, hiInclusive);
 
             return k!=null && inBounds(k)? k : null;
         }
 
+        @Override
+        public K firstKey() {
+            K ret = firstKey2();
+            if(ret==null)
+                throw new NoSuchElementException();
+            return ret;
+        }
+
+        @Override
+        public K lastKey() {
+            K ret = lastKey2();
+            if(ret==null)
+                throw new NoSuchElementException();
+            return ret;        }
 
         @Override
         public Map.Entry<K,V> firstEntry() {
@@ -967,7 +980,7 @@ public class BTreeMapJava {
 
         @Override
         public NavigableSet<K> navigableKeySet() {
-            return new KeySet<K>((ConcurrentNavigableMap<K,Object>) this,m.getHasValues());
+            return new KeySet<K>((ConcurrentNavigableMap2<K,Object>) this,m.getHasValues());
         }
 
 
@@ -1010,7 +1023,7 @@ public class BTreeMapJava {
 
         @Override
         public NavigableSet<K> keySet() {
-            return new KeySet<K>((ConcurrentNavigableMap<K,Object>) this, m.getHasValues());
+            return new KeySet<K>((ConcurrentNavigableMap2<K,Object>) this, m.getHasValues());
         }
 
         @Override
@@ -1041,8 +1054,12 @@ public class BTreeMapJava {
 
     }
 
+    interface ConcurrentNavigableMap2<K,V> extends ConcurrentNavigableMap<K,V>{
+        K firstKey2();
+        K lastKey2();
+    }
 
-    static protected  class DescendingMap<K,V> extends AbstractMap<K,V> implements  ConcurrentNavigableMap<K,V> {
+    static protected  class DescendingMap<K,V> extends AbstractMap<K,V> implements  ConcurrentNavigableMap2<K,V> {
 
         protected final ConcurrentNavigableMapExtra<K,V> m;
 
@@ -1241,19 +1258,35 @@ public class BTreeMapJava {
             return k!=null? k.getKey():null;
         }
 
-
         @Override
-        public K firstKey() {
+        public K firstKey2() {
             Entry<K,V> e = firstEntry();
-            if(e==null) throw new NoSuchElementException();
+            if(e==null)
+                return null;
             return e.getKey();
         }
 
         @Override
-        public K lastKey() {
+        public K lastKey2() {
             Entry<K,V> e = lastEntry();
-            if(e==null) throw new NoSuchElementException();
+            if(e==null)
+                return null;
             return e.getKey();
+        }
+
+
+        @Override
+        public K firstKey() {
+            K key = firstKey2();
+            if(key==null) throw new NoSuchElementException();
+            return key;
+        }
+
+        @Override
+        public K lastKey() {
+            K key = lastKey2();
+            if(key==null) throw new NoSuchElementException();
+            return key;
         }
 
 
@@ -1391,7 +1424,7 @@ public class BTreeMapJava {
 
         @Override
         public NavigableSet<K> navigableKeySet() {
-            return new KeySet<K>((ConcurrentNavigableMap<K,Object>) this,m.getHasValues());
+            return new KeySet<K>((ConcurrentNavigableMap2<K,Object>) this,m.getHasValues());
         }
 
 
@@ -1434,12 +1467,12 @@ public class BTreeMapJava {
 
         @Override
         public NavigableSet<K> keySet() {
-            return new KeySet<K>((ConcurrentNavigableMap<K,Object>) this, m.getHasValues());
+            return new KeySet<K>((ConcurrentNavigableMap2<K,Object>) this, m.getHasValues());
         }
 
         @Override
         public NavigableSet<K> descendingKeySet() {
-            return new KeySet<K>((ConcurrentNavigableMap<K,Object>) descendingMap(), m.getHasValues());
+            return new KeySet<K>((ConcurrentNavigableMap2<K,Object>) descendingMap(), m.getHasValues());
         }
 
 

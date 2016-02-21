@@ -106,6 +106,10 @@ class BTreeMap<K,V>(
                 return 0
             }
 
+            override fun valueArrayCopyOfRange(vals: Any?, from: Int, to: Int): Any? {
+                return to-from
+            }
+
             override fun isTrusted(): Boolean {
                 return true
             }
@@ -795,7 +799,7 @@ class BTreeMap<K,V>(
     }
 
     override val keys: NavigableSet<K?> =
-            KeySet<K>(this as ConcurrentNavigableMap<K, Any>, this.hasValues)
+            KeySet<K>(this as ConcurrentNavigableMap2<K, Any>, this.hasValues)
 
 
 
@@ -1718,14 +1722,50 @@ class BTreeMap<K,V>(
         return AbstractMap.SimpleImmutableEntry(key, value)
     }
 
-    override fun firstKey(): K? {
-        val e = firstEntry()?:throw NoSuchElementException()
-        return e.key
+    override fun firstKey2(): K? {
+        //get first node
+        var node = getNode(leftEdges.first)
+        //until empty, follow link
+        while (node.isEmpty(keySerializer)) {
+            if (node.isRightEdge)
+                return null;
+            node = getNode(node.link)
+        }
+        return keySerializer.valueArrayGet(node.keys, 1 - node.intLeftEdge())
     }
 
-    override fun lastKey(): K? {
-        val e = lastEntry()?:throw NoSuchElementException()
-        return e.key
+    override fun lastKey2(): K? {
+        // FIXME this does not handle empty nodes
+        var node = getNode(rootRecid)
+        if (node.isEmpty(keySerializer))
+            return null
+
+        while (node.isDir) {
+            val recid =
+                    if (node.link != 0L) node.link
+                    else node.children[node.children.size - 1]
+            node = getNode(recid)
+        }
+
+        //got leaf, follow link until not zero
+        while (node.link != 0L)
+            node = getNode(node.link)
+
+        //return last entry from node
+        return keySerializer.valueArrayGet(
+                node.keys,
+                keySerializer.valueArraySize(node.keys) - 1
+        )
+    }
+
+    override fun firstKey(): K {
+        return firstKey2()?:
+                throw NoSuchElementException()
+    }
+
+    override fun lastKey(): K {
+        return lastKey2()?:
+                throw NoSuchElementException()
     }
 
     override fun pollFirstEntry(): MutableMap.MutableEntry<K, V?>? {
