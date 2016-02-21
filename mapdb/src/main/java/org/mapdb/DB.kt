@@ -658,7 +658,9 @@ open class DB(
         override val type = "TreeMap"
 
         private var _keySerializer:Serializer<K> = Serializer.JAVA as Serializer<K>
-        private var _valueSerializer:Serializer<V> = Serializer.JAVA as Serializer<V>
+        private var _valueSerializer:Serializer<V> =
+                if(hasValues) Serializer.JAVA as Serializer<V>
+                else BTreeMap.NO_VAL_SERIALIZER as Serializer<V>
         private var _maxNodeSize = CC.BTREEMAP_MAX_NODE_SIZE
         private var _counterEnable: Boolean = false
         private var _valueLoader:((key:K)->V)? = null
@@ -675,6 +677,8 @@ open class DB(
         }
 
         fun <A> valueSerializer(valueSerializer:Serializer<A>):TreeMapMaker<K,A>{
+            if(!hasValues)
+                throw DBException.WrongConfiguration("Set, no vals")
             _valueSerializer = valueSerializer as Serializer<V>
             return this as TreeMapMaker<K, A>
         }
@@ -750,8 +754,11 @@ open class DB(
         }
 
         override fun create2(catalog: SortedMap<String, String>): BTreeMap<K, V> {
-            db.nameCatalogPutClass(catalog, name + Keys.keySerializer, _keySerializer)
-            db.nameCatalogPutClass(catalog, name + Keys.valueSerializer, _valueSerializer)
+            db.nameCatalogPutClass(catalog, name +
+                    (if(hasValues)Keys.keySerializer else Keys.serializer), _keySerializer)
+            if(hasValues) {
+                db.nameCatalogPutClass(catalog, name + Keys.valueSerializer, _valueSerializer)
+            }
 
             val rootRecidRecid2 = _rootRecidRecid
                     ?: BTreeMap.putEmptyRoot(db.store, _keySerializer, _valueSerializer)
@@ -781,11 +788,15 @@ open class DB(
             val rootRecidRecid2 = catalog[name + Keys.rootRecidRecid]!!.toLong()
 
             _keySerializer =
-                    db.nameCatalogGetClass(catalog, name + Keys.keySerializer)
+                    db.nameCatalogGetClass(catalog, name +
+                            if(hasValues)Keys.keySerializer else Keys.serializer)
                             ?: _keySerializer
             _valueSerializer =
-                    db.nameCatalogGetClass(catalog, name + Keys.valueSerializer)
-                            ?: _valueSerializer
+                    if(!hasValues) {
+                        BTreeMap.NO_VAL_SERIALIZER as Serializer<V>
+                    }else {
+                        db.nameCatalogGetClass(catalog, name + Keys.valueSerializer) ?: _valueSerializer
+                    }
 
             val counterRecid2 = catalog[name + Keys.counterRecid]!!.toLong()
             _maxNodeSize = catalog[name + Keys.maxNodeSize]!!.toInt()

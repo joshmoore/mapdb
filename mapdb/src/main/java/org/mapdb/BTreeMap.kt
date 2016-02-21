@@ -63,6 +63,53 @@ class BTreeMap<K,V>(
                             NodeSerializer(keySerializer, valueSerializer)),
                     Serializer.RECID)
         }
+
+
+        internal val NO_VAL_SERIALIZER = object:Serializer<Boolean>(){
+
+            override fun deserialize(input: DataInput2, available: Int): Boolean? {
+                throw IllegalAccessError();
+            }
+
+            override fun serialize(out: DataOutput2, value: Boolean) {
+                throw IllegalAccessError();
+            }
+
+            override fun valueArrayDeserialize(`in`: DataInput2?, size: Int): Any? {
+                return size
+            }
+
+            override fun valueArraySerialize(out: DataOutput2?, vals: Any?) {
+            }
+
+            override fun valueArrayPut(vals: Any?, pos: Int, newValue: Boolean?): Any? {
+                return (vals as Int)+1
+            }
+
+            override fun valueArraySize(vals: Any?): Int {
+                return vals as Int
+            }
+
+            override fun valueArrayUpdateVal(vals: Any?, pos: Int, newValue: Boolean?): Any? {
+                return vals
+            }
+
+            override fun valueArrayGet(vals: Any?, pos: Int): Boolean? {
+                return true
+            }
+
+            override fun valueArrayDeleteValue(vals: Any?, pos: Int): Any? {
+                return (vals as Int) -1
+            }
+
+            override fun valueArrayEmpty(): Any? {
+                return 0
+            }
+
+            override fun isTrusted(): Boolean {
+                return true
+            }
+        }
     }
 
     private val hasBinaryStore = store is StoreBinary
@@ -1789,6 +1836,88 @@ class BTreeMap<K,V>(
         return null
     }
 
+    override fun findHigherKey(key: K?, inclusive: Boolean): K? {
+        var current = rootRecid
+        var A = getNode(current)
+
+        //dive into bottom
+        while (A.isDir) {
+            current = findChild(keySerializer, A, comparator, key)
+            A = getNode(current)
+        }
+
+
+        //follow link until necessary
+        while(true){
+            var pos = keySerializer.valueArraySearch(A.keys, key, comparator)
+            if(!inclusive && pos>=1-A.intLeftEdge())
+                pos++
+
+            if(pos<0)
+                pos = -pos-1
+
+            if(pos==0 && !A.isLeftEdge)
+                pos++
+
+            //check if is last key
+            if(pos< keySerializer.valueArraySize(A.keys)-1+A.intLastKeyTwice()+A.intRightEdge()){
+                return keySerializer.valueArrayGet(A.keys, pos)
+            }
+
+            if(A.isRightEdge){
+                //reached end, cancel iteration
+                return null
+            }
+            //load next node
+            A = getNode(A.link)
+        }
+    }
+
+    override fun findLowerKey(key: K?, inclusive: Boolean): K? {
+        val iter = descendingLeafIterator(key)
+        while(iter.hasNext()){
+            val node = iter.next()
+            if(node.isEmpty(keySerializer))
+                continue
+
+            var pos = keySerializer.valueArraySearch(node.keys, key)
+
+            if(pos==-1)
+                continue
+            if(pos==0 && !inclusive)
+                continue
+
+            if(pos>=1-node.intLeftEdge() && !inclusive)
+                pos--
+
+            if(pos>=keySerializer.valueArraySize(node.keys)-1+node.intRightEdge()+node.intLastKeyTwice())
+                pos--
+
+            if(pos>=1-node.intLeftEdge()){
+                //node was found
+                return keySerializer.valueArrayGet(node.keys, pos)
+            }
+
+            if(inclusive && pos == 1-node.intLeftEdge()){
+                pos = 1-node.intLeftEdge()
+                return keySerializer.valueArrayGet(node.keys, pos)
+            }
+
+            if(pos<0){
+                pos = - pos - 2
+                if(pos>=keySerializer.valueArraySize(node.keys)-1+node.intRightEdge()+node.intLastKeyTwice())
+                    pos--
+
+                if(pos<1-node.intLeftEdge())
+                    continue
+
+                return keySerializer.valueArrayGet(node.keys, pos)
+            }
+        }
+        return null
+    }
+
+
 
     override fun lowerEntry(key: K?): MutableMap.MutableEntry<K, V>? {
         if (key == null) throw NullPointerException()
@@ -1796,8 +1925,7 @@ class BTreeMap<K,V>(
     }
 
     override fun lowerKey(key: K): K? {
-        val n = lowerEntry(key)
-        return n?.key
+        return findLowerKey(key, false)
     }
 
     override fun floorEntry(key: K?): MutableMap.MutableEntry<K, V>? {
@@ -1806,8 +1934,7 @@ class BTreeMap<K,V>(
     }
 
     override fun floorKey(key: K): K? {
-        val n = floorEntry(key)
-        return n?.key
+        return findLowerKey(key, true)
     }
 
     override fun ceilingEntry(key: K?): MutableMap.MutableEntry<K, V>? {
@@ -1818,8 +1945,7 @@ class BTreeMap<K,V>(
 
     override fun ceilingKey(key: K?): K? {
         if (key == null) throw NullPointerException()
-        val n = ceilingEntry(key)
-        return n?.key
+        return findHigherKey(key, true)
     }
 
     override fun higherEntry(key: K?): MutableMap.MutableEntry<K, V>? {
@@ -1829,8 +1955,7 @@ class BTreeMap<K,V>(
 
     override fun higherKey(key: K?): K? {
         if (key == null) throw NullPointerException()
-        val n = higherEntry(key)
-        return n?.key
+        return findHigherKey(key, false)
     }
 
 }

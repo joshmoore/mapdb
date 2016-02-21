@@ -406,16 +406,27 @@ public class BTreeMapJava {
         public E first() { return m.firstKey(); }
         @Override
         public E last() { return m.lastKey(); }
+
         @Override
         public E pollFirst() {
-            Map.Entry<E,Object> e = m.pollFirstEntry();
-            return e == null? null : e.getKey();
+            while(true){
+                E e = m.firstKey();
+                if(e==null || m.remove(e)!=null){
+                    return e;
+                }
+            }
         }
+
         @Override
         public E pollLast() {
-            Map.Entry<E,Object> e = m.pollLastEntry();
-            return e == null? null : e.getKey();
+            while(true){
+                E e = m.lastKey();
+                if(e==null || m.remove(e)!=null){
+                    return e;
+                }
+            }
         }
+
         @Override
         public Iterator<E> iterator() {
             if (m instanceof ConcurrentNavigableMapExtra)
@@ -727,8 +738,14 @@ public class BTreeMapJava {
 
         @Override
         public K lowerKey(K key) {
-            Entry<K,V> n = lowerEntry(key);
-            return (n == null)? null : n.getKey();
+            if(key==null)throw new NullPointerException();
+            if(tooLow(key))return null;
+
+            if(tooHigh(key))
+                return lastKey();
+
+            K r = m.lowerKey(key);
+            return r!=null && !tooLow(r) ? r :null;
         }
 
         @Override
@@ -743,14 +760,20 @@ public class BTreeMapJava {
             Entry<K,V> ret = m.floorEntry(key);
             if(ret!=null && tooLow(ret.getKey())) return null;
             return ret;
-
         }
 
         @Override
         public K floorKey(K key) {
-            Entry<K,V> n = floorEntry(key);
-            return (n == null)? null : n.getKey();
-        }
+            if(key==null) throw new NullPointerException();
+            if(tooLow(key)) return null;
+
+            if(tooHigh(key)){
+                return lastKey();
+            }
+
+            K ret = m.floorKey(key);
+            if(ret!=null && tooLow(ret)) return null;
+            return ret;        }
 
         @Override
         public Map.Entry<K,V> ceilingEntry(K key) {
@@ -768,8 +791,16 @@ public class BTreeMapJava {
 
         @Override
         public K ceilingKey(K key) {
-            Entry<K,V> k = ceilingEntry(key);
-            return k!=null? k.getKey():null;
+            if(key==null) throw new NullPointerException();
+            if(tooHigh(key)) return null;
+
+            if(tooLow(key)){
+                return firstKey();
+            }
+
+            K ret = m.ceilingKey(key);
+            if(ret!=null && tooHigh(ret)) return null;
+            return ret;
         }
 
         @Override
@@ -780,23 +811,28 @@ public class BTreeMapJava {
 
         @Override
         public K higherKey(K key) {
-            Entry<K,V> k = higherEntry(key);
-            return k!=null? k.getKey():null;
+            K r = m.higherKey(key);
+            return r!=null && inBounds(r) ? r : null;
         }
 
 
         @Override
         public K firstKey() {
-            Entry<K,V> e = firstEntry();
-            if(e==null) throw new NoSuchElementException();
-            return e.getKey();
+            K k =
+                    lo==null ?
+                            m.firstKey():
+                            m.findHigherKey(lo, loInclusive);
+            return k!=null && inBounds(k)? k : null;
         }
 
         @Override
         public K lastKey() {
-            Entry<K,V> e = lastEntry();
-            if(e==null) throw new NoSuchElementException();
-            return e.getKey();
+            K k =
+                    hi==null ?
+                            m.lastKey():
+                            m.findLowerKey(hi, hiInclusive);
+
+            return k!=null && inBounds(k)? k : null;
         }
 
 
@@ -807,7 +843,6 @@ public class BTreeMapJava {
                             m.firstEntry():
                             m.findHigher(lo, loInclusive);
             return k!=null && inBounds(k.getKey())? k : null;
-
         }
 
         @Override

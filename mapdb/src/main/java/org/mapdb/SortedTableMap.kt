@@ -2260,6 +2260,133 @@ class SortedTableMap<K,V>(
         }
     }
 
+
+    override fun findHigherKey(key: K?, inclusive: Boolean): K? {
+        if(key==null)
+            throw NullPointerException()
+
+        var keyPos = keySerializer.valueArraySearch(pageKeys, key)
+
+        pageLoop@ while(true) {
+            if (keyPos == -1) {
+                return firstKey()
+            }
+            if(keyPos>pageCount)
+                return null
+
+            if (keyPos < 0)
+                keyPos = -keyPos - 2
+
+            val headSize = if (keyPos == 0) start else 0
+            val offset = (keyPos * pageSize).toLong()
+            val offsetWithHead = offset + headSize;
+            val nodeCount = volume.getInt(offsetWithHead)
+
+            //run binary search on first keys on each node
+            var nodePos = nodeSearch(key, offset, offsetWithHead, nodeCount)
+            if(nodePos==-1)
+                nodePos = 0
+            else if (nodePos < 0)
+                nodePos = -nodePos - 2
+
+
+            nodeLoop@ while(true) {
+                //search in keys at pos
+                val keysOffset = offset + volume.getInt(offsetWithHead + 4 + nodePos * 4)
+                val keysBinarySize = offset + volume.getInt(offsetWithHead + 4 + nodePos * 4 + 4) - keysOffset
+                val di = volume.getDataInput(keysOffset, keysBinarySize.toInt())
+                val keysSize = di.unpackInt()
+                val keys = keySerializer.valueArrayDeserialize(di, keysSize)
+                var valuePos = keySerializer.valueArraySearch(keys, key, comparator)
+
+                if (!inclusive && valuePos >= 0)
+                    valuePos++
+                if (valuePos < 0)
+                    valuePos = -valuePos - 1
+
+                //check if valuePos fits into current node
+                if (valuePos >= keysSize) {
+                    //does not fit, increase node and continue
+                    nodePos++
+
+                    //is the last node on this page? in that case increase page count and contine page loop
+                    if(nodePos>=nodeCount){
+                        keyPos++
+                        continue@pageLoop
+                    }
+
+                    continue@nodeLoop
+                }
+
+                return keySerializer.valueArrayGet(keys, valuePos)
+            }
+        }
+    }
+
+    override fun findLowerKey(key: K?, inclusive: Boolean): K? {
+        if(key==null)
+            throw NullPointerException()
+
+        var keyPos = keySerializer.valueArraySearch(pageKeys, key)
+
+        pageLoop@ while(true) {
+            if (keyPos == -1) {
+                return null
+            }
+            if(keyPos>pageCount)
+                return lastKey()
+
+            if (keyPos < 0)
+                keyPos = -keyPos - 2
+
+            val headSize = if (keyPos == 0) start else 0
+            val offset = (keyPos * pageSize).toLong()
+            val offsetWithHead = offset + headSize;
+            val nodeCount = volume.getInt(offsetWithHead)
+
+            //run binary search on first keys on each node
+            var nodePos = nodeSearch(key, offset, offsetWithHead, nodeCount)
+            if (nodePos < 0)
+                nodePos = -nodePos - 2
+
+            nodeLoop@ while(true) {
+                //search in keys at pos
+                val keysOffset = offset + volume.getInt(offsetWithHead + 4 + nodePos * 4)
+                val keysBinarySize = offset + volume.getInt(offsetWithHead + 4 + nodePos * 4 + 4) - keysOffset
+                val di = volume.getDataInput(keysOffset, keysBinarySize.toInt())
+                val keysSize = di.unpackInt()
+                val keys = keySerializer.valueArrayDeserialize(di, keysSize)
+                var valuePos = keySerializer.valueArraySearch(keys, key, comparator)
+
+                if (!inclusive && valuePos >= 0)
+                    valuePos--
+                else if (valuePos < 0)
+                    valuePos = -valuePos - 2
+
+                //check if valuePos fits into current node
+                if (valuePos < 0) {
+                    //does not fit, increase node and continue
+                    nodePos--
+
+                    //is the last node on this page? in that case increase page count and contine page loop
+                    if(nodePos<0){
+                        keyPos--
+                        continue@pageLoop
+                    }
+
+                    continue@nodeLoop
+                }
+
+                if (valuePos >= keysSize) {
+                    valuePos--
+                }
+
+                return keySerializer.valueArrayGet(keys, valuePos)
+            }
+        }
+    }
+
+
     override fun forEachKey(procedure: (K) -> Unit) {
         //TODO PERF optimize forEach traversal
         for(k in keys)
