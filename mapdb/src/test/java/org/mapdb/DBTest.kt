@@ -5,6 +5,7 @@ import org.eclipse.collections.impl.set.mutable.primitive.LongHashSet
 import org.junit.Assert.*
 import org.junit.Test
 import java.math.BigDecimal
+import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -292,7 +293,7 @@ class DBTest{
     }
 
 
-    @Test fun executors(){
+    @Test fun executors_hashMap(){
         val db = DBMaker.heapDB().make()
         assertEquals(0, db.executors.size)
         val exec = Executors.newSingleThreadScheduledExecutor()
@@ -466,5 +467,385 @@ class DBTest{
 
         assertEquals("org.mapdb.Serializer#INTEGER", catalog["set"+ DB.Keys.serializer])
     }
+
+
+    @Test fun hashSet_create_unresolvable_serializer(){
+        val db = DB(store=StoreTrivial(), storeOpened = false)
+        val unresolvable = object:Serializer<String>(){
+            override fun deserialize(input: DataInput2, available: Int): String? {
+                throw UnsupportedOperationException()
+            }
+
+            override fun serialize(out: DataOutput2, value: String) {
+                throw UnsupportedOperationException()
+            }
+        }
+        val hashmap = db.hashSet("aa", unresolvable).create()
+
+        assertEquals(unresolvable, hashmap.map.keySerializer)
+
+        db.lock.writeLock().lock()
+        val nameCatalog = db.nameCatalogLoad()
+        assertTrue(2<nameCatalog.size)
+        assertEquals("HashSet",nameCatalog["aa.type"])
+        assertEquals(null, nameCatalog["aa.serializer"])
+    }
+
+    @Test fun hashSet_Create(){
+        val db = DB(store=StoreTrivial(), storeOpened = false)
+
+        val hmap = db.hashSet("aa", Serializer.BIG_DECIMAL)
+                .layout(0, 8, 2)
+                .hashSeed(1000)
+                .expireAfterCreate(11L)
+                .expireAfterGet(33L)
+                .counterEnable()
+                .removeCollapsesIndexTreeDisable()
+                .create()
+
+        db.lock.writeLock().lock()
+        val p = db.nameCatalogParamsFor("aa")
+
+        assertEquals(13, p.size)
+        assertEquals(1,hmap.map.indexTrees.size)
+        assertEquals((hmap.map.indexTrees[0] as IndexTreeLongLongMap).rootRecid.toString(), p["aa"+DB.Keys.rootRecids])
+        assertEquals("HashSet", p["aa"+DB.Keys.type])
+        assertEquals("org.mapdb.Serializer#BIG_DECIMAL", p["aa"+DB.Keys.serializer])
+        assertTrue((hmap.map.indexTrees[0] as IndexTreeLongLongMap).collapseOnRemove.not())
+        assertEquals("false", p["aa"+DB.Keys.removeCollapsesIndexTree])
+
+        assertEquals("0", p["aa"+DB.Keys.concShift])
+        assertEquals("2", p["aa"+DB.Keys.levels])
+        assertEquals("3", p["aa"+DB.Keys.dirShift])
+        assertEquals("1000", p["aa"+DB.Keys.hashSeed])
+        assertEquals("11", p["aa"+DB.Keys.expireCreateTTL])
+        assertEquals(null, p["aa"+DB.Keys.expireUpdateTTL])
+        assertEquals("33", p["aa"+DB.Keys.expireGetTTL])
+
+        fun qToString(q:QueueLong)=""+q.tailRecid+","+q.headRecid+","+q.headPrevRecid
+        assertEquals(qToString(hmap.map.expireCreateQueues!![0]), p["aa"+DB.Keys.expireCreateQueues])
+        assertEquals(null, p["aa"+DB.Keys.expireUpdateQueues])
+        assertEquals(qToString(hmap.map.expireGetQueues!![0]), p["aa"+DB.Keys.expireGetQueues])
+
+        assertEquals(1, hmap.map.counterRecids!!.size)
+        assertTrue(p["aa"+DB.Keys.counterRecids]!!.toLong()>0)
+
+    }
+
+
+    @Test fun hashSet_Create_Default(){
+        val db = DB(store=StoreTrivial(), storeOpened = false)
+
+        val hmap = db.hashSet("aa")
+                .create()
+        db.lock.writeLock().lock()
+        val p = db.nameCatalogParamsFor("aa")
+
+        assertEquals(13, p.size)
+        val rootRecids = hmap.map.indexTrees
+                .map { (it as IndexTreeLongLongMap).rootRecid.toString()}
+                .fold("",{str, it-> str+",$it"})
+
+        assertEquals(8, Utils.identityCount(hmap.map.indexTrees))
+        assertEquals(1, hmap.map.stores.toSet().size)
+        assertEquals(rootRecids, ","+p["aa"+DB.Keys.rootRecids])
+        assertEquals("HashSet", p["aa"+DB.Keys.type])
+        assertEquals("org.mapdb.Serializer#JAVA", p["aa"+DB.Keys.serializer])
+        assertEquals(null, p["aa"+DB.Keys.valueInline])
+        assertTrue((hmap.map.indexTrees[0] as IndexTreeLongLongMap).collapseOnRemove)
+        assertEquals("true", p["aa"+DB.Keys.removeCollapsesIndexTree])
+
+
+        assertEquals("3", p["aa"+DB.Keys.concShift])
+        assertEquals("4", p["aa"+DB.Keys.levels])
+        assertEquals("4", p["aa"+DB.Keys.dirShift])
+        assertTrue(p["aa"+DB.Keys.hashSeed]!!.toInt() != 0)
+        assertEquals("0", p["aa"+DB.Keys.expireCreateTTL])
+        assertEquals(null, p["aa"+DB.Keys.expireUpdateTTL])
+        assertEquals("0", p["aa"+DB.Keys.expireGetTTL])
+
+        assertEquals("", p["aa"+DB.Keys.expireCreateQueues])
+        assertEquals(null, p["aa"+DB.Keys.expireUpdateQueues])
+        assertEquals("", p["aa"+DB.Keys.expireGetQueues])
+
+        assertEquals(null, hmap.map.counterRecids)
+        assertEquals("", p["aa"+DB.Keys.counterRecids])
+
+
+        hmap.map.stores.forEach{assertTrue(db.store===it)}
+        hmap.map.indexTrees.forEach{assertTrue(db.store===(it as IndexTreeLongLongMap).store)}
+    }
+
+    @Test fun hashSet_Create_conc_expire(){
+        val db = DB(store=StoreTrivial(), storeOpened = false)
+
+        val hmap = db.hashSet("aa")
+                .expireAfterCreate(10)
+                .expireAfterGet(30)
+                .create()
+        db.lock.writeLock().lock()
+        val p = db.nameCatalogParamsFor("aa")
+
+        assertEquals(13, p.size)
+        assertEquals(8, hmap.map.indexTrees.size)
+        assertEquals(8, Utils.identityCount(hmap.map.indexTrees))
+        assertEquals(1, hmap.map.stores.toSet().size)
+
+        val rootRecids = hmap.map.indexTrees
+                .map { (it as IndexTreeLongLongMap).rootRecid.toString()}
+                .fold("",{str, it-> str+",$it"})
+        assertEquals(rootRecids, ","+p["aa"+DB.Keys.rootRecids])
+        assertEquals("HashSet", p["aa"+DB.Keys.type])
+        assertEquals("org.mapdb.Serializer#JAVA", p["aa"+DB.Keys.serializer])
+        assertEquals(null, p["aa"+DB.Keys.keySerializer])
+        assertEquals(null, p["aa"+DB.Keys.valueSerializer])
+        assertEquals("3", p["aa"+DB.Keys.concShift])
+        assertEquals("4", p["aa"+DB.Keys.levels])
+        assertEquals("4", p["aa"+DB.Keys.dirShift])
+        assertTrue(p["aa"+DB.Keys.hashSeed]!!.toInt() != 0)
+        assertEquals("10", p["aa"+DB.Keys.expireCreateTTL])
+        assertEquals(null, p["aa"+DB.Keys.expireUpdateTTL])
+        assertEquals("30", p["aa"+DB.Keys.expireGetTTL])
+
+        assertEquals(null, hmap.map.counterRecids)
+        assertEquals("", p["aa"+DB.Keys.counterRecids])
+
+        hmap.map.stores.forEach{assertTrue(db.store===it)}
+        hmap.map.indexTrees.forEach{assertTrue(db.store===(it as IndexTreeLongLongMap).store)}
+        hmap.map.expireCreateQueues!!.forEach{assertTrue(db.store===it.store)}
+        assertNull(hmap.map.expireUpdateQueues)
+        hmap.map.expireGetQueues!!.forEach{assertTrue(db.store===it.store)}
+
+
+        fun qToString(qq:Array<QueueLong>):String{
+            val r = LongArrayList()
+            for(q in qq){
+                r.add(q.tailRecid)
+                r.add(q.headRecid)
+                r.add(q.headPrevRecid)
+            }
+            return r.makeString("",",","")
+        }
+        assertEquals(qToString(hmap.map.expireCreateQueues!!), p["aa"+DB.Keys.expireCreateQueues])
+        assertEquals(null, p["aa"+DB.Keys.expireUpdateQueues])
+        assertEquals(qToString(hmap.map.expireGetQueues!!), p["aa"+DB.Keys.expireGetQueues])
+
+
+        //ensure there are no duplicates in recids
+        val expireRecids = LongHashSet();
+        arrayOf(hmap.map.expireCreateQueues!!, hmap.map.expireGetQueues!!).forEach{
+            it.forEach{
+                expireRecids.add(it.headRecid)
+                expireRecids.add(it.tailRecid)
+                expireRecids.add(it.headPrevRecid)
+            }
+        }
+        assertEquals(8*3*2, expireRecids.size())
+
+    }
+
+    fun btreemap(set: NavigableSet<*>):BTreeMap<*,*>{
+        return (set as BTreeMapJava.KeySet).m as BTreeMap<*,*>
+    }
+
+    @Test fun hashSet_Create_Multi_Store(){
+        val hmap = DBMaker
+                .memoryShardedHashSet(8)
+                .expireAfterCreate(10)
+                .expireAfterGet(10)
+                .create()
+        assertEquals(3, hmap.map.concShift)
+        assertEquals(8, hmap.map.stores.size)
+        assertEquals(8, Utils.identityCount(hmap.map.stores))
+        assertEquals(8, Utils.identityCount(hmap.map.indexTrees))
+        assertEquals(8, Utils.identityCount(hmap.map.expireCreateQueues!!))
+        assertNull(hmap.map.expireUpdateQueues)
+        assertEquals(8, Utils.identityCount(hmap.map.expireGetQueues!!))
+
+        for(segment in 0 until 8){
+            val store = hmap.map.stores[segment]
+            assertTrue(store===(hmap.map.indexTrees[segment] as IndexTreeLongLongMap).store)
+            assertTrue(store===hmap.map.expireCreateQueues!![segment].store)
+            assertTrue(store===hmap.map.expireGetQueues!![segment].store)
+        }
+    }
+
+    @Test fun hashSet_expireUnit(){
+        val hmap = DBMaker.heapDB().make().hashSet("aa")
+                .expireAfterCreate(1, TimeUnit.SECONDS)
+                .expireAfterGet(3, TimeUnit.HOURS)
+                .create()
+
+        assertEquals(TimeUnit.SECONDS.toMillis(1), hmap.map.expireCreateTTL)
+        assertEquals(0, hmap.map.expireUpdateTTL)
+        assertEquals(TimeUnit.HOURS.toMillis(3), hmap.map.expireGetTTL)
+    }
+
+
+    @Test fun hashSet_layout_number_to_shift(){
+        fun tt(v:Int, expected:Int){
+            val map = DBMaker.heapDB().make().hashSet("aa").layout(v,v,1).create();
+            assertEquals(expected, map.map.concShift)
+            assertEquals(expected, map.map.dirShift)
+        }
+
+        tt(-1, 0)
+        tt(0, 0)
+        tt(1, 0)
+        tt(2, 1)
+        tt(3, 2)
+        tt(4, 2)
+        tt(5, 3)
+        tt(6, 3)
+        tt(7, 3)
+        tt(8, 3)
+        tt(9, 4)
+    }
+
+
+    @Test fun executors_hashSet(){
+        val db = DBMaker.heapDB().make()
+        assertEquals(0, db.executors.size)
+        val exec = Executors.newSingleThreadScheduledExecutor()
+        val htreemap = db.hashSet("map")
+                .expireAfterCreate(1)
+                .expireExecutor(exec)
+                .expireExecutorPeriod(10000)
+                .create()
+
+        assertEquals(setOf(exec), db.executors)
+        assertEquals(exec, htreemap.map.expireExecutor)
+        assertTrue(exec.isTerminated.not() && exec.isShutdown.not())
+
+        //keep it busy a bit during termination
+        exec.submit { Thread.sleep(300) }
+        db.close()
+        //close should terminate this dam thing
+        assertTrue(exec.isTerminated && exec.isShutdown)
+        assertTrue(db.executors.isEmpty())
+
+    }
+
+
+
+    @Test fun treeSet_create_unresolvable_serializer(){
+        val db = DB(store=StoreTrivial(), storeOpened = false)
+        val unresolvable = object:Serializer<String>(){
+            override fun deserialize(input: DataInput2, available: Int): String? {
+                throw UnsupportedOperationException()
+            }
+
+            override fun serialize(out: DataOutput2, value: String) {
+                throw UnsupportedOperationException()
+            }
+        }
+        val map = db.treeSet("aa", unresolvable).create()
+
+        assertEquals(unresolvable, btreemap(map).keySerializer)
+
+        db.lock.writeLock().lock()
+        val nameCatalog = db.nameCatalogLoad()
+        assertTrue(2<nameCatalog.size)
+        assertEquals("TreeSet",nameCatalog["aa.type"])
+        assertEquals(null, nameCatalog["aa.keySerializer"])
+        assertEquals(null, nameCatalog["aa.serializer"])
+    }
+
+    @Test fun treeSet_Create(){
+        val db = DB(store=StoreTrivial(), storeOpened = false)
+
+        val map = db.treeSet("aa", Serializer.BIG_DECIMAL)
+                .counterEnable()
+                .maxNodeSize(16)
+                .create()
+        db.lock.writeLock().lock()
+        val p = db.nameCatalogParamsFor("aa")
+
+        assertEquals(5, p.size)
+        assertEquals("TreeSet", p["aa"+DB.Keys.type])
+        assertEquals("org.mapdb.Serializer#BIG_DECIMAL", p["aa"+DB.Keys.serializer])
+        assertEquals("16", p["aa"+DB.Keys.maxNodeSize])
+        assertEquals(btreemap(map).rootRecidRecid.toString(), p["aa"+DB.Keys.rootRecidRecid])
+        //TODO reenable once counter is done
+        //        assertTrue(p["aa"+DB.Keys.counterRecids]!!.toLong()>0)
+
+    }
+
+
+    @Test fun treeSet_Create_Default(){
+        val db = DB(store=StoreTrivial(), storeOpened = false)
+
+        val map = db.treeSet("aa")
+                .create()
+
+        db.lock.writeLock().lock()
+        val p = db.nameCatalogParamsFor("aa")
+
+        assertEquals(5, p.size)
+        assertEquals(btreemap(map).store, db.store)
+        assertEquals("0", p["aa"+DB.Keys.counterRecid])
+        assertEquals(CC.BTREEMAP_MAX_NODE_SIZE.toString(), p["aa"+DB.Keys.maxNodeSize])
+        assertEquals(btreemap(map).rootRecidRecid.toString(), p["aa"+DB.Keys.rootRecidRecid])
+        assertEquals("TreeSet", p["aa"+DB.Keys.type])
+        assertEquals("org.mapdb.Serializer#JAVA", p["aa"+DB.Keys.serializer])
+        assertEquals(null, p["aa"+DB.Keys.keySerializer])
+        assertEquals(null, p["aa"+DB.Keys.valueSerializer])
+    }
+// TODO treeSet import
+//    @Test fun treeSet_import(){
+//        val db = DB(store=StoreTrivial(), storeOpened = false)
+//        val maker = db.treeSet("aa", Serializer.INTEGER)
+//                .import()
+//        maker.takeAll((0..6).map{it})
+//        val map = maker.finish()
+//        assertEquals(7, map.size)
+//        for(i in 0..6){
+//            assertTrue(map.contains(i))
+//        }
+//    }
+//
+//
+//    @Test fun treeSet_import_size(){
+//        val db = DB(store=StoreTrivial(), storeOpened = false)
+//        val maker = db.treeSet("aa", Serializer.INTEGER)
+//                .counterEnable()
+//                .import()
+//        maker.takeAll((0..6).map{it})
+//        val map = maker.finish()
+//        assertEquals(7, map.size)
+//    }
+//
+    @Test fun treeSet_reopen(){
+        val f = TT.tempFile()
+
+        var db = DB(store=StoreDirect.make(file=f.path), storeOpened = false)
+        var map = db.treeSet("map", Serializer.INTEGER).create()
+        map.add(11)
+        db.commit()
+        db.close()
+
+        db = DB(store=StoreDirect.make(file=f.path), storeOpened = true)
+        map = db.treeSet("map", Serializer.INTEGER).open()
+        assertTrue(map.contains(11))
+
+        f.delete()
+    }
+
+    @Test fun hashSet_reopen(){
+        val f = TT.tempFile()
+
+        var db = DB(store=StoreDirect.make(file=f.path), storeOpened = false)
+        var map = db.hashSet("map", Serializer.INTEGER).create()
+        map.add(11)
+        db.commit()
+        db.close()
+
+        db = DB(store=StoreDirect.make(file=f.path), storeOpened = true)
+        map = db.hashSet("map", Serializer.INTEGER).open()
+        assertTrue(map.contains(11))
+
+        f.delete()
+    }
+
 
 }

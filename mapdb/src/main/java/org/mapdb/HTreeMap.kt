@@ -918,41 +918,41 @@ class HTreeMap<K,V>(
 
     }
 
-
-
-    override val keys: MutableSet<K?> = object : AbstractSet<K>(){
+    class KeySet<K>(val map:HTreeMap<K,Any?>): AbstractSet<K>(){
 
         override fun iterator(): MutableIterator<K?> {
-            val iters = (0 until segmentCount).map{segment->
-                htreeIterator(segment) {key, wrappedValue ->
-                   key as K
+            val iters = (0 until map.segmentCount).map{segment->
+                map.htreeIterator(segment) {key, wrappedValue ->
+                    key as K
                 }
             }
             return Iterators.concat(iters.iterator())
         }
 
         override val size: Int
-            get() = this@HTreeMap.size
+        get() = map.size
 
 
         override fun add(element: K): Boolean {
-            if(hasValues)
+            if(map.hasValues)
                 throw UnsupportedOperationException("Can not add without val")
-            return this@HTreeMap.put(element, "" as V)!=null //TODO default val for hashsets
+            return map.put(element, true as Any?)!=null //TODO default val for hashsets
         }
 
         override fun clear() {
-            this@HTreeMap.clear()
+            map.clear()
         }
 
         override fun isEmpty(): Boolean {
-            return this@HTreeMap.isEmpty()
+            return map.isEmpty()
         }
 
         override fun remove(element: K): Boolean {
-            return this@HTreeMap.remove(element)!=null
+            return map.remove(element)!=null
         }
     }
+
+    override val keys: KeySet<K> = KeySet(this as HTreeMap<K,Any?>)
 
 
 

@@ -435,7 +435,8 @@ open class DB(
             if(hasValues) {
                 db.nameCatalogPutClass(catalog, name + Keys.valueSerializer, _valueSerializer)
             }
-            catalog[name + Keys.valueInline] = _valueInline.toString()
+            if(hasValues)
+                catalog[name + Keys.valueInline] = _valueInline.toString()
 
             catalog[name + Keys.rootRecids] = rootRecidsStr
             catalog[name + Keys.hashSeed] = hashSeed.toString()
@@ -456,7 +457,8 @@ open class DB(
             }
 
             catalog[name + Keys.expireCreateTTL] = _expireCreateTTL.toString()
-            catalog[name + Keys.expireUpdateTTL] = _expireUpdateTTL.toString()
+            if(hasValues)
+                catalog[name + Keys.expireUpdateTTL] = _expireUpdateTTL.toString()
             catalog[name + Keys.expireGetTTL] = _expireGetTTL.toString()
 
             var createQ = LongArrayList()
@@ -488,7 +490,8 @@ open class DB(
                     else Array(segmentCount, { emptyLongQueue(it, getQ) })
 
             catalog[name + Keys.expireCreateQueues] = createQ.makeString("", ",", "")
-            catalog[name + Keys.expireUpdateQueues] = updateQ.makeString("", ",", "")
+            if(hasValues)
+                catalog[name + Keys.expireUpdateQueues] = updateQ.makeString("", ",", "")
             catalog[name + Keys.expireGetQueues] = getQ.makeString("", ",", "")
 
             val indexTrees = Array<MutableLongLongMap>(1.shl(_concShift), { segment ->
@@ -542,7 +545,7 @@ open class DB(
                     else {
                        db.nameCatalogGetClass(catalog, name + Keys.valueSerializer)?: _valueSerializer
                     }
-            _valueInline = catalog[name + Keys.valueInline]!!.toBoolean()
+            _valueInline = if(hasValues) catalog[name + Keys.valueInline]!!.toBoolean() else false
 
             val hashSeed = catalog[name + Keys.hashSeed]!!.toInt()
             val rootRecids = catalog[name + Keys.rootRecids]!!.split(",").map { it.toLong() }.toLongArray()
@@ -558,7 +561,7 @@ open class DB(
 
 
             _expireCreateTTL = catalog[name + Keys.expireCreateTTL]!!.toLong()
-            _expireUpdateTTL = catalog[name + Keys.expireUpdateTTL]!!.toLong()
+            _expireUpdateTTL = if(hasValues)catalog[name + Keys.expireUpdateTTL]!!.toLong() else 0L
             _expireGetTTL = catalog[name + Keys.expireGetTTL]!!.toLong()
 
 
@@ -887,7 +890,7 @@ open class DB(
     class HashSetMaker<E>(
             override val db:DB,
             override val name:String
-    ) :Maker<MutableSet<E>>(){
+    ) :Maker<HTreeMap.KeySet<E>>(){
 
         protected val maker = HashMapMaker<E, Any?>(db, name, hasValues=false)
 
@@ -902,17 +905,92 @@ open class DB(
             return this;
         }
 
+        fun removeCollapsesIndexTreeDisable():HashSetMaker<E>{
+            maker.removeCollapsesIndexTreeDisable()
+            return this
+        }
+
+        fun hashSeed(hashSeed:Int):HashSetMaker<E>{
+            maker.hashSeed(hashSeed)
+            return this
+        }
+
+        fun layout(concurrency:Int, dirSize:Int, levels:Int):HashSetMaker<E>{
+            maker.layout(concurrency, dirSize, levels)
+            return this
+        }
+
+        fun expireAfterCreate():HashSetMaker<E>{
+            return expireAfterCreate(-1)
+        }
+
+        fun expireAfterCreate(ttl:Long):HashSetMaker<E>{
+            maker.expireAfterCreate(ttl)
+            return this
+        }
+
+
+        fun expireAfterCreate(ttl:Long, unit:TimeUnit):HashSetMaker<E> {
+            return expireAfterCreate(unit.toMillis(ttl))
+        }
+
+        fun expireAfterGet():HashSetMaker<E>{
+            return expireAfterGet(-1)
+        }
+
+        fun expireAfterGet(ttl:Long):HashSetMaker<E>{
+            maker.expireAfterGet(ttl)
+            return this
+        }
+
+
+        fun expireAfterGet(ttl:Long, unit:TimeUnit):HashSetMaker<E> {
+            return expireAfterGet(unit.toMillis(ttl))
+        }
+
+
+        fun expireExecutor(executor: ScheduledExecutorService?):HashSetMaker<E>{
+            maker.expireExecutor(executor)
+            return this
+        }
+
+        fun expireExecutorPeriod(period:Long):HashSetMaker<E>{
+            maker.expireExecutorPeriod(period)
+            return this
+        }
+
+        fun expireCompactThreshold(freeFraction: Double):HashSetMaker<E>{
+            maker.expireCompactThreshold(freeFraction)
+            return this
+        }
+
+
+        fun expireMaxSize(maxSize:Long):HashSetMaker<E>{
+            maker.expireMaxSize(maxSize)
+            return this
+        }
+
+        fun expireStoreSize(storeSize:Long):HashSetMaker<E>{
+            maker.expireStoreSize(storeSize)
+            return this
+        }
+
+
+        internal fun storeFactory(storeFactory:(segment:Int)->Store):HashSetMaker<E>{
+            maker.storeFactory(storeFactory)
+            return this
+        }
 
         override fun verify() {
             maker.verify()
         }
 
-        override fun open2(catalog: SortedMap<String, String>): MutableSet<E> {
-            return maker.open2(catalog).keys as MutableSet<E>
+        override fun open2(catalog: SortedMap<String, String>): HTreeMap.KeySet<E> {
+            return maker.open2(catalog).keys
         }
 
-        override fun create2(catalog: SortedMap<String, String>): MutableSet<E> {
-            return maker.create2(catalog).keys as MutableSet<E>
+        override fun create2(catalog: SortedMap<String, String>): HTreeMap.KeySet<E> {
+            return maker.create2(catalog).keys
         }
 
         override val type = "HashSet"

@@ -27,6 +27,24 @@ object DBMaker{
         return Maker(storeType = StoreType.direct, volume=volume, volumeExist=volumeExists)
     }
 
+
+    @JvmStatic fun memoryShardedHashSet(concurrency:Int): DB.HashSetMaker<*> =
+            DB(store = StoreDirect.make(),storeOpened = false)
+                    .hashSet("map")
+                    .storeFactory{i->
+                        StoreDirect.make(isThreadSafe = false)
+                    }
+                    .layout(concurrency=concurrency, dirSize = 1.shl(CC.HTREEMAP_DIR_SHIFT), levels = CC.HTREEMAP_LEVELS)
+
+    @JvmStatic fun heapShardedHashSet(concurrency:Int): DB.HashSetMaker<*> =
+            DB(store = StoreOnHeap(),storeOpened = false)
+                    .hashSet("map")
+                    .storeFactory{i->
+                        StoreOnHeap(isThreadSafe = false)
+                    }
+                    .layout(concurrency=concurrency, dirSize = 1.shl(CC.HTREEMAP_DIR_SHIFT), levels = CC.HTREEMAP_LEVELS)
+
+
     @JvmStatic fun memoryShardedHashMap(concurrency:Int): DB.HashMapMaker<*,*> =
             DB(store = StoreDirect.make(),storeOpened = false)
                     .hashMap("map")
