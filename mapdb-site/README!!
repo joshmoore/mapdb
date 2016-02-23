@@ -6,6 +6,8 @@ To compile install newest Sphinx, version bundled with Ubuntu 14.04 is too old:
     sudo pip install sphinx
     sudo pip install ablog
 
+Documentation uses some files from mapdb. So checkout source repository to ../mapdb
+
 To generate PDF one has to install texlive packages.
 
     sudo apt-get install texlive-latex-base texlive-fonts-recommended texlive-latex-extra
@@ -19,7 +21,7 @@ And generate html. It depends on PDF and MapDB source code. Result will be place
 
     make clean html
 
-To publish local changes into Github run publish. It will ask for
+To publish local changes checkout `gh-pages` branch into `../gh-pages/` folder and run publish. It will ask for
 github login:
 
     ./publish
