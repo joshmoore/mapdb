@@ -196,17 +196,17 @@ public abstract class JSR166TestCase extends TestCase {
     // Instrumentation to debug very rare, but very annoying hung test runs.
     static volatile TestCase currentTestCase;
     // static volatile int currentRun = 0;
-    static {
-        Runnable checkForWedgedTest = new Runnable() { public void run() {
-            // Avoid spurious reports with enormous runsPerTest.
-            // A single test case run should never take more than 1 second.
-            // But let's cap it at the high end too ...
-            final int timeoutMinutes =
-                Math.min(15, Math.max(runsPerTest / 60, 1));
-            for (TestCase lastTestCase = currentTestCase;;) {
-                try { MINUTES.sleep(timeoutMinutes); }
-                catch (InterruptedException unexpected) { break; }
-                if (lastTestCase == currentTestCase) {
+//    static {
+//        Runnable checkForWedgedTest = new Runnable() { public void run() {
+//            // Avoid spurious reports with enormous runsPerTest.
+//            // A single test case run should never take more than 1 second.
+//            // But let's cap it at the high end too ...
+//            final int timeoutMinutes =
+//                Math.min(15, Math.max(runsPerTest / 60, 1));
+//            for (TestCase lastTestCase = currentTestCase;;) {
+//                try { MINUTES.sleep(timeoutMinutes); }
+//                catch (InterruptedException unexpected) { break; }
+//                if (lastTestCase == currentTestCase) {
 //                    System.err.printf(
 //                        "Looks like we're stuck running test: %s%n",
 //                        lastTestCase);
@@ -217,15 +217,15 @@ public abstract class JSR166TestCase extends TestCase {
 //                         Runtime.getRuntime().availableProcessors());
 //                     System.err.printf("cpu model = %s%n", cpuModel());
 //                    dumpTestThreads();
-                    // one stack dump is probably enough; more would be spam
-                    break;
-                }
-                lastTestCase = currentTestCase;
-            }}};
-        Thread thread = new Thread(checkForWedgedTest, "checkForWedgedTest");
-        thread.setDaemon(true);
-        thread.start();
-    }
+//                    // one stack dump is probably enough; more would be spam
+//                    break;
+//                }
+//                lastTestCase = currentTestCase;
+//            }}};
+//        Thread thread = new Thread(checkForWedgedTest, "checkForWedgedTest");
+//        thread.setDaemon(true);
+//        thread.start();
+//    }
 
 //     public static String cpuModel() {
 //         try {
@@ -236,37 +236,37 @@ public abstract class JSR166TestCase extends TestCase {
 //             return matcher.group(1);
 //         } catch (Exception ex) { return null; }
 //     }
+//
+//    public void runBare() throws Throwable {
+//        currentTestCase = this;
+//        if (methodFilter == null
+//            || methodFilter.matcher(toString()).find())
+//            super.runBare();
+//    }
 
-    public void runBare() throws Throwable {
-        currentTestCase = this;
-        if (methodFilter == null
-            || methodFilter.matcher(toString()).find())
-            super.runBare();
-    }
-
-    protected void runTest() throws Throwable {
-        for (int i = 0; i < runsPerTest; i++) {
-            // currentRun = i;
-            if (profileTests)
-                runTestProfiled();
-            else
-                super.runTest();
-        }
-    }
-
-    protected void runTestProfiled() throws Throwable {
-        for (int i = 0; i < 2; i++) {
-            long startTime = System.nanoTime();
-            super.runTest();
-            long elapsedMillis = millisElapsedSince(startTime);
-            if (elapsedMillis < profileThreshold)
-                break;
-            // Never report first run of any test; treat it as a
-            // warmup run, notably to trigger all needed classloading,
-            if (i > 0)
-                System.out.printf("%n%s: %d%n", toString(), elapsedMillis);
-        }
-    }
+//    protected void runTest() throws Throwable {
+//        for (int i = 0; i < runsPerTest; i++) {
+//            // currentRun = i;
+//            if (profileTests)
+//                runTestProfiled();
+//            else
+//                super.runTest();
+//        }
+//    }
+//
+//    protected void runTestProfiled() throws Throwable {
+//        for (int i = 0; i < 2; i++) {
+//            long startTime = System.nanoTime();
+//            super.runTest();
+//            long elapsedMillis = millisElapsedSince(startTime);
+//            if (elapsedMillis < profileThreshold)
+//                break;
+//            // Never report first run of any test; treat it as a
+//            // warmup run, notably to trigger all needed classloading,
+//            if (i > 0)
+//                System.out.printf("%n%s: %d%n", toString(), elapsedMillis);
+//        }
+//    }
 
     /**
      * Runs all JSR166 unit tests using junit.textui.TestRunner.
@@ -922,23 +922,23 @@ public abstract class JSR166TestCase extends TestCase {
      * Uninteresting threads are filtered out.
      */
     static void dumpTestThreads() {
-        ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
-        System.err.println("------ stacktrace dump start ------");
-        for (ThreadInfo info : threadMXBean.dumpAllThreads(true, true)) {
-            String name = info.getThreadName();
-            if ("Signal Dispatcher".equals(name))
-                continue;
-            if ("Reference Handler".equals(name)
-                && info.getLockName().startsWith("java.lang.ref.Reference$Lock"))
-                continue;
-            if ("Finalizer".equals(name)
-                && info.getLockName().startsWith("java.lang.ref.ReferenceQueue$Lock"))
-                continue;
-            if ("checkForWedgedTest".equals(name))
-                continue;
-            System.err.print(info);
-        }
-        System.err.println("------ stacktrace dump end ------");
+//        ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+//        System.err.println("------ stacktrace dump start ------");
+//        for (ThreadInfo info : threadMXBean.dumpAllThreads(true, true)) {
+//            String name = info.getThreadName();
+//            if ("Signal Dispatcher".equals(name))
+//                continue;
+//            if ("Reference Handler".equals(name)
+//                && info.getLockName().startsWith("java.lang.ref.Reference$Lock"))
+//                continue;
+//            if ("Finalizer".equals(name)
+//                && info.getLockName().startsWith("java.lang.ref.ReferenceQueue$Lock"))
+//                continue;
+//            if ("checkForWedgedTest".equals(name))
+//                continue;
+//            System.err.print(info);
+//        }
+//        System.err.println("------ stacktrace dump end ------");
     }
 
     /**
