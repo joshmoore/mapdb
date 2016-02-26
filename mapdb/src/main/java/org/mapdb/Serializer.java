@@ -620,6 +620,61 @@ public abstract class Serializer<A> implements Comparator<A> {
         }
     };
 
+    /**
+     * Applies delta packing on {@code java.lang.Long}.
+     * Difference between consequential numbers is also packed itself, so for small diffs it takes only single byte per
+     * number.
+     */
+    public static final Serializer<Long> LONG_DELTA = new LongSerializer(){
+        @Override
+        public void serialize(DataOutput2 out, Long value) throws IOException {
+            out.packLong(value);
+        }
+
+        @Override
+        public Long deserialize(DataInput2 in, int available) throws IOException {
+            return new Long(in.unpackLong());
+        }
+
+        @Override
+        public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
+            long[] keys = (long[]) vals;
+            long prev = keys[0];
+            out.packLong(prev);
+            for(int i=1;i<keys.length;i++){
+                long curr = keys[i];
+                //$DELAY$
+                out.packLong(curr-prev);
+                if(CC.ASSERT && curr<prev)
+                    throw new AssertionError("not sorted");
+                prev = curr;
+            }
+        }
+
+        @Override
+        public Object valueArrayDeserialize(DataInput2 in, int size) throws IOException {
+            return in.unpackLongArrayDeltaCompression(size);
+        }
+
+
+
+        @Override
+        public Long valueArrayBinaryGet(DataInput2 input, int keysLen, int pos) throws IOException {
+            long a=0;
+            while(pos-- >= 0){
+                a += input.unpackLong();
+            }
+            return a;
+        }
+
+
+
+        @Override
+        public int fixedSize() {
+            return -1;
+        }
+    };
+
 
 
     abstract protected static class FourByteSerializer<E> extends Serializer<E>{
@@ -854,6 +909,76 @@ public abstract class Serializer<A> implements Comparator<A> {
         }
 
     };
+
+
+    /**
+     * Applies delta packing on {@code java.lang.Integer}.
+     * Difference between consequential numbers is also packed itself, so for small diffs it takes only single byte per
+     * number.
+     */
+    public static final Serializer<Integer> INTEGER_DELTA = new IntegerSerializer(){
+        @Override
+        public void serialize(DataOutput2 out, Integer value) throws IOException {
+            out.packInt(value);
+        }
+
+        @Override
+        public Integer deserialize(DataInput2 in, int available) throws IOException {
+            return new Integer(in.unpackInt());
+        }
+
+        @Override
+        public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
+            int[] keys = (int[]) vals;
+            int prev = keys[0];
+            out.packInt(prev);
+            for(int i=1;i<keys.length;i++){
+                int curr = keys[i];
+                //$DELAY$
+                out.packInt(curr-prev);
+                if(CC.ASSERT && curr<prev)
+                    throw new AssertionError("not sorted");
+                prev = curr;
+            }
+        }
+
+        @Override
+        public Object valueArrayDeserialize(DataInput2 in, int size) throws IOException {
+            int[] ret = new int[size];
+            int prev = 0 ;
+            for(int i = 0; i<size; i++){
+                //$DELAY$
+                prev += in.unpackInt();
+                ret[i] = prev;
+            }
+            return ret;
+        }
+
+
+        @Override
+        public Integer valueArrayBinaryGet(DataInput2 input, int keysLen, int pos) throws IOException {
+            int a=0;
+            while(pos-- >= 0){
+                a += input.unpackInt();
+            }
+            return a;
+        }
+
+        @Override
+        public int valueArrayBinarySearch(Integer key, DataInput2 input, int keysLen, Comparator comparator) throws IOException {
+            Object keys = valueArrayDeserialize(input, keysLen);
+            return valueArraySearch(keys, key, comparator);
+        }
+
+
+
+        @Override
+        public int fixedSize() {
+            return -1;
+        }
+
+    };
+
 
     public static final Serializer<Boolean> BOOLEAN = new BooleanSer();
 

@@ -114,7 +114,7 @@ abstract class SerializerTest<E>{
     }
 
     @Test open fun valueArrayGet(){
-        var v = Array<Any>(max.toInt(), {i->randomValue() as Any})
+        var v = randomArray()
         val keys = serializer.valueArrayFromArray(v)
         val out = DataOutput2()
         serializer.valueArraySerialize(out, keys)
@@ -130,14 +130,9 @@ abstract class SerializerTest<E>{
 
     }
 
-    fun randomValueArray():Any{
-        var o = serializer.valueArrayEmpty()
-        for(i in 0 until arraySize){
-            val r = randomValue()
-            o = serializer.valueArrayPut(o, random.nextInt(i+1),r)
-        }
-        return o
-    }
+    open protected fun randomArray() = Array<Any>(max.toInt(), { i -> randomValue() as Any })
+
+    open protected fun randomValueArray() = serializer.valueArrayFromArray(Array<Any>(arraySize.toInt(), { i -> randomValue() as Any }))
 
     fun cloneValueArray(vals:Any):Any{
         val out = dataOutput;
@@ -274,6 +269,23 @@ class Serializer_LONG_PACKED:SerializerTest<Long>(){
     override val serializer = Serializer.LONG_PACKED
 }
 
+class Serializer_LONG_DELTA:SerializerTest<Long>(){
+    override fun randomValue() = random.nextLong()
+    override val serializer = Serializer.LONG_DELTA
+    override fun randomArray(): Array<Any> {
+        val v = super.randomArray()
+        Arrays.sort(v)
+        return v
+    }
+
+    override fun randomValueArray(): Any {
+        val v = super.randomValueArray()
+        Arrays.sort(v as LongArray)
+        return v
+    }
+}
+
+
 
 class Serializer_INTEGER:SerializerTest<Int>(){
     override fun randomValue() = random.nextInt()
@@ -284,6 +296,25 @@ class Serializer_INTEGER_PACKED:SerializerTest<Int>(){
     override fun randomValue() = random.nextInt()
     override val serializer = Serializer.INTEGER_PACKED
 }
+
+class Serializer_INTEGER_DELTA:SerializerTest<Int>(){
+    override fun randomValue() = random.nextInt()
+    override val serializer = Serializer.INTEGER_DELTA
+
+    override fun randomArray(): Array<Any> {
+        val v = super.randomArray()
+        Arrays.sort(v)
+        return v
+    }
+
+    override fun randomValueArray(): Any {
+        val v = super.randomValueArray()
+        Arrays.sort(v as IntArray)
+        return v
+    }
+
+}
+
 //
 //class Serializer_LONG_PACKED_ZIGZAG:SerializerTest<Long>(){
 //    override fun randomValue() = random.nextLong()
