@@ -16,9 +16,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
-import junit.framework.Test;
-import junit.framework.TestSuite;
-
 public abstract class CopyOnWriteArrayListTest extends JSR166TestCase {
 
 
@@ -582,7 +579,7 @@ public abstract class CopyOnWriteArrayListTest extends JSR166TestCase {
         List[] lists = { c, c.subList(1, c.size() - 1) };
         for (List list : lists) {
             try {
-                list.add(-1, "qwerty");
+                list.add(-1,23455234);
                 shouldThrow();
             } catch (IndexOutOfBoundsException success) {}
         }
@@ -596,7 +593,7 @@ public abstract class CopyOnWriteArrayListTest extends JSR166TestCase {
         List[] lists = { c, c.subList(1, c.size() - 1) };
         for (List list : lists) {
             try {
-                list.add(list.size() + 1, "qwerty");
+                list.add(list.size() + 1, 432423423);
                 shouldThrow();
             } catch (IndexOutOfBoundsException success) {}
         }

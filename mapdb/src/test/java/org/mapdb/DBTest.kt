@@ -847,5 +847,80 @@ class DBTest{
         f.delete()
     }
 
+    @Test fun indexTreeLongLongMap_create(){
+        val db = DBMaker.memoryDB().make()
+        val map = db.indexTreeLongLongMap("map").make();
+        map.put(1L, 2L);
+        assertEquals(1, map.size())
+    }
+
+
+    @Test fun indexTreeLongLongMap_reopen(){
+        val f = TT.tempFile()
+
+        var db = DB(store=StoreDirect.make(file=f.path), storeOpened = false)
+        var map = db.indexTreeLongLongMap("aa").layout(3,5).removeCollapsesIndexTreeDisable().make()
+        for(i in 1L .. 1000L)
+            map.put(i,i*2)
+        db.commit()
+        db.close()
+
+        db = DB(store=StoreDirect.make(file=f.path), storeOpened = true)
+        map = db.indexTreeLongLongMap("aa").open()
+
+        for(i in 1L .. 1000L)
+            assertEquals(i*2, map.get(i))
+        assertEquals(1000, map.size())
+
+        db.lock.writeLock().lock()
+        val catalog = db.nameCatalogLoad()
+        assertEquals(5, catalog.size)
+        assertEquals("false", catalog["aa"+DB.Keys.removeCollapsesIndexTree])
+        assertEquals("2",catalog["aa"+DB.Keys.dirShift])
+        assertEquals("5",catalog["aa"+DB.Keys.levels])
+        assertEquals("IndexTreeLongLongMap", catalog["aa"+DB.Keys.type])
+        assertEquals(map.rootRecid.toString(), catalog["aa"+DB.Keys.rootRecid])
+        f.delete()
+    }
+
+
+    @Test fun indexTreeList_create(){
+        val db = DBMaker.memoryDB().make()
+        val list:IndexTreeList<Int> = db.indexTreeList("map", Serializer.INTEGER).make();
+        list.add(11)
+        assertEquals(1, list.size)
+    }
+
+
+    @Test fun indexTreeList_reopen(){
+        val f = TT.tempFile()
+
+        var db = DB(store=StoreDirect.make(file=f.path), storeOpened = false)
+        var list = db.indexTreeList("aa",Serializer.INTEGER).layout(3,5).removeCollapsesIndexTreeDisable().make()
+        for(i in 1 .. 1000)
+            list.add(i)
+        db.commit()
+        db.close()
+
+        db = DB(store=StoreDirect.make(file=f.path), storeOpened = true)
+        list = db.indexTreeList<Int>("aa").open() as IndexTreeList<Int>
+
+        for(i in 1 .. 1000)
+            assertEquals(i, list[i-1])
+        assertEquals(1000, list.size)
+
+        db.lock.writeLock().lock()
+        val catalog = db.nameCatalogLoad()
+        assertEquals(7, catalog.size)
+        assertEquals("false", catalog["aa"+DB.Keys.removeCollapsesIndexTree])
+        assertEquals("2",catalog["aa"+DB.Keys.dirShift])
+        assertEquals("5",catalog["aa"+DB.Keys.levels])
+        assertEquals("IndexTreeLongLongMap", catalog["aa"+DB.Keys.type])
+        assertEquals("org.mapdb.Serializer#INTEGER",catalog["aa"+DB.Keys.serializer])
+        assertEquals((list.map as IndexTreeLongLongMap).rootRecid.toString(), catalog["aa"+DB.Keys.rootRecid])
+        f.delete()
+    }
+
+
 
 }

@@ -76,6 +76,7 @@ open class DB(
 
 
         val rootRecids = ".rootRecids"
+        val rootRecid = ".rootRecid"
         /** concurrency shift, 1<<it is number of concurrent segments in HashMap*/
         val concShift = ".concShift"
         val dirShift = ".dirShift"
@@ -1157,5 +1158,134 @@ open class DB(
 
     fun <E> atomicVar(name:String, serializer:Serializer<E>, value:E? ) = AtomicVarMaker(this, name, serializer, value)
 
+    class IndexTreeLongLongMapMaker(
+            override val db:DB,
+            override val name:String
+    ):Maker<IndexTreeLongLongMap>(){
+
+        private var _dirShift = CC.HTREEMAP_DIR_SHIFT
+        private var _levels = CC.HTREEMAP_LEVELS
+        private var _removeCollapsesIndexTree:Boolean = true
+
+        override val type = "IndexTreeLongLongMap"
+
+        fun layout(dirSize:Int, levels:Int):IndexTreeLongLongMapMaker{
+            fun toShift(value:Int):Int{
+                return 31 - Integer.numberOfLeadingZeros(DataIO.nextPowTwo(Math.max(1,value)))
+            }
+            _dirShift = toShift(dirSize)
+            _levels = levels
+            return this
+        }
+
+
+        fun removeCollapsesIndexTreeDisable():IndexTreeLongLongMapMaker{
+            _removeCollapsesIndexTree = false
+            return this
+        }
+
+
+
+        override fun create2(catalog: SortedMap<String, String>): IndexTreeLongLongMap {
+            catalog[name+Keys.dirShift] = _dirShift.toString()
+            catalog[name+Keys.levels] = _levels.toString()
+            catalog[name + Keys.removeCollapsesIndexTree] = _removeCollapsesIndexTree.toString()
+
+            val rootRecid = db.store.put(IndexTreeListJava.dirEmpty(), IndexTreeListJava.dirSer)
+            catalog[name+Keys.rootRecid] = rootRecid.toString()
+            return IndexTreeLongLongMap(
+                    store=db.store,
+                    rootRecid = rootRecid,
+                    dirShift = _dirShift,
+                    levels=_levels,
+                    collapseOnRemove = _removeCollapsesIndexTree);
+        }
+
+        override fun open2(catalog: SortedMap<String, String>): IndexTreeLongLongMap {
+            return IndexTreeLongLongMap(
+                    store = db.store,
+                    dirShift = catalog[name+Keys.dirShift]!!.toInt(),
+                    levels = catalog[name+Keys.levels]!!.toInt(),
+                    rootRecid = catalog[name+Keys.rootRecid]!!.toLong(),
+                    collapseOnRemove = catalog[name + Keys.removeCollapsesIndexTree]!!.toBoolean())
+        }
+    }
+
+    //TODO this is thread unsafe, but locks should not be added directly due to code overhead on HTreeMap
+    fun indexTreeLongLongMap(name: String) = IndexTreeLongLongMapMaker(this, name)
+
+
+    class IndexTreeListMaker<E>(
+            override val db:DB,
+            override val name:String,
+            protected val serializer:Serializer<E>
+    ):Maker<IndexTreeList<E>>(){
+
+        private var _dirShift = CC.HTREEMAP_DIR_SHIFT
+        private var _levels = CC.HTREEMAP_LEVELS
+        private var _removeCollapsesIndexTree:Boolean = true
+
+        override val type = "IndexTreeLongLongMap"
+
+        fun layout(dirSize:Int, levels:Int):IndexTreeListMaker<E>{
+            fun toShift(value:Int):Int{
+                return 31 - Integer.numberOfLeadingZeros(DataIO.nextPowTwo(Math.max(1,value)))
+            }
+            _dirShift = toShift(dirSize)
+            _levels = levels
+            return this
+        }
+
+
+        fun removeCollapsesIndexTreeDisable():IndexTreeListMaker<E>{
+            _removeCollapsesIndexTree = false
+            return this
+        }
+
+        override fun create2(catalog: SortedMap<String, String>): IndexTreeList<E> {
+            catalog[name+Keys.dirShift] = _dirShift.toString()
+            catalog[name+Keys.levels] = _levels.toString()
+            catalog[name + Keys.removeCollapsesIndexTree] = _removeCollapsesIndexTree.toString()
+            db.nameCatalogPutClass(catalog, name + Keys.serializer, serializer)
+
+            val counterRecid = db.store.put(0L, Serializer.LONG_PACKED)
+            catalog[name+Keys.counterRecid] = counterRecid.toString()
+            val rootRecid = db.store.put(IndexTreeListJava.dirEmpty(), IndexTreeListJava.dirSer)
+            catalog[name+Keys.rootRecid] = rootRecid.toString()
+            val map = IndexTreeLongLongMap(
+                    store=db.store,
+                    rootRecid = rootRecid,
+                    dirShift = _dirShift,
+                    levels=_levels,
+                    collapseOnRemove = _removeCollapsesIndexTree);
+
+            return IndexTreeList(
+                    store = db.store,
+                    map = map,
+                    serializer = serializer,
+                    isThreadSafe = true,
+                    counterRecid = counterRecid
+            )
+        }
+
+        override fun open2(catalog: SortedMap<String, String>): IndexTreeList<E> {
+            val map =  IndexTreeLongLongMap(
+                    store = db.store,
+                    dirShift = catalog[name+Keys.dirShift]!!.toInt(),
+                    levels = catalog[name+Keys.levels]!!.toInt(),
+                    rootRecid = catalog[name+Keys.rootRecid]!!.toLong(),
+                    collapseOnRemove = catalog[name + Keys.removeCollapsesIndexTree]!!.toBoolean())
+            return IndexTreeList(
+                    store = db.store,
+                    map = map,
+                    serializer =  db.nameCatalogGetClass(catalog, name + Keys.serializer)?: serializer,
+                    isThreadSafe = true,
+                    counterRecid = catalog[name+Keys.counterRecid]!!.toLong()
+            )
+        }
+    }
+
+    fun <E> indexTreeList(name: String, serializer:Serializer<E>) = IndexTreeListMaker(this, name, serializer)
+    fun <E> indexTreeList(name: String) = indexTreeList(name, Serializer.JAVA)
 
 }

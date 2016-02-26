@@ -8,100 +8,111 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 /**
  * [ArrayList] like structure backed by tree
  */
-//TODO this is just broken
-internal class IndexTreeList<E> (
-        val isThreadSafe:Boolean,
-        val serializer:Serializer<E>,
+class IndexTreeList<E> (
         val store:Store,
-        val map: MutableLongLongMap
-) : AbstractList<E?>() {
+        val serializer:Serializer<E>,
+        val map: MutableLongLongMap,
+        val counterRecid:Long,
+        val isThreadSafe:Boolean
+        ) : AbstractList<E?>() {
 
-    var _size = 0;
+    val lock = if(isThreadSafe) ReentrantReadWriteLock() else null
 
     override fun add(element: E?): Boolean {
-        val index = _size++
-        val recid = store.put(element, serializer)
-        map.put(index.toLong(), recid)
-        return true
+        Utils.lockWrite(lock) {
+            val index = size++
+            val recid = store.put(element, serializer)
+            map.put(index.toLong(), recid)
+            return true
+        }
     }
 
     override fun add(index: Int, element: E?) {
-        checkIndex(index)
-        //make space
-        for(i in size-1 downTo index){
-            val recid = map.get(i.toLong())
-            if(recid==0L)
-                continue;
-            map.remove(i.toLong())
-            map.put((i+1).toLong(), recid)
-        }
-        _size++
+        Utils.lockWrite(lock) {
+            checkIndex(index)
+            //make space
+            for (i in size - 1 downTo index) {
+                val recid = map.get(i.toLong())
+                if (recid == 0L)
+                    continue;
+                map.remove(i.toLong())
+                map.put((i + 1).toLong(), recid)
+            }
+            size++
 
-        val recid = map[index.toLong()]
-        if(recid==0L){
-            map.put(index.toLong(), store.put(element, serializer))
-        }else{
-            store.update(recid, element, serializer)
+            val recid = map[index.toLong()]
+            if (recid == 0L) {
+                map.put(index.toLong(), store.put(element, serializer))
+            } else {
+                store.update(recid, element, serializer)
+            }
         }
-
     }
 
     override fun clear() {
-        _size = 0;
-        //TODO iterate over map and clear in in single pass if IndexTreeLongLongMap
-        map.forEachValue{recid->store.delete(recid, serializer)}
-        map.clear()
+        Utils.lockWrite(lock) {
+            size = 0;
+            //TODO iterate over map and clear in in single pass if IndexTreeLongLongMap
+            map.forEachValue { recid -> store.delete(recid, serializer) }
+            map.clear()
+        }
     }
 
     override fun removeAt(index: Int): E? {
-        checkIndex(index)
-        val recid = map[index.toLong()]
-        val ret = if(recid==0L){
-             null;
-        }else {
-            val ret = store.get(recid, serializer)
-            store.delete(recid, serializer)
-            map.remove(index.toLong())
-            ret
+        Utils.lockWrite(lock) {
+            checkIndex(index)
+            val recid = map[index.toLong()]
+            val ret = if (recid == 0L) {
+                null;
+            } else {
+                val ret = store.get(recid, serializer)
+                store.delete(recid, serializer)
+                map.remove(index.toLong())
+                ret
+            }
+            //move down rest of the list
+            for (i in index + 1 until size) {
+                val recid = map.get(i.toLong())
+                if (recid == 0L)
+                    continue;
+                map.remove(i.toLong())
+                map.put((i - 1).toLong(), recid)
+            }
+            size--
+            return ret;
         }
-        //move down rest of the list
-        for(i in index+1 until size){
-            val recid = map.get(i.toLong())
-            if(recid==0L)
-                continue;
-            map.remove(i.toLong())
-            map.put((i-1).toLong(), recid)
-        }
-        _size--
-        return ret;
     }
 
     override fun set(index: Int, element: E?): E? {
-        checkIndex(index)
-        val recid = map[index.toLong()]
-        if(recid==0L){
-            map.put(index.toLong(), store.put(element, serializer))
-            return null;
-        }else{
-            val ret = store.get(recid, serializer)
-            store.update(recid, element, serializer)
-            return ret
+        Utils.lockWrite(lock) {
+            checkIndex(index)
+            val recid = map[index.toLong()]
+            if (recid == 0L) {
+                map.put(index.toLong(), store.put(element, serializer))
+                return null;
+            } else {
+                val ret = store.get(recid, serializer)
+                store.update(recid, element, serializer)
+                return ret
+            }
         }
     }
 
     fun checkIndex(index:Int){
-        if(index<0 || index>=_size)
+        if(index<0 || index>=size)
             throw IndexOutOfBoundsException()
     }
 
     override fun get(index: Int): E? {
-        checkIndex(index)
+        Utils.lockRead(lock) {
+            checkIndex(index)
 
-        val recid = map[index.toLong()]
-        if(recid==0L){
-            return null;
+            val recid = map[index.toLong()]
+            if (recid == 0L) {
+                return null;
+            }
+            return store.get(recid, serializer)
         }
-        return store.get(recid, serializer)
     }
 
     override fun isEmpty(): Boolean {
@@ -112,33 +123,42 @@ internal class IndexTreeList<E> (
     override fun iterator(): MutableIterator<E?> {
         return object:MutableIterator<E?>{
 
-            var index = 0;
-            var indexToRemove:Int?=null;
+            @Volatile var index = 0;
+            @Volatile var indexToRemove:Int?=null;
             override fun hasNext(): Boolean {
-                return index <this@IndexTreeList._size
+                Utils.lockRead(lock) {
+                    return index < this@IndexTreeList.size
+                }
             }
 
             override fun next(): E? {
-                if(!hasNext())
-                    throw NoSuchElementException()
-                indexToRemove = index
-                val ret = this@IndexTreeList[index]
-                index++;
-                return ret;
+                Utils.lockRead(lock) {
+                    if (index >= this@IndexTreeList.size)
+                        throw NoSuchElementException()
+                    indexToRemove = index
+                    val ret = this@IndexTreeList[index]
+                    index++;
+                    return ret;
+                }
             }
 
             override fun remove() {
-                removeAt(indexToRemove ?:throw IllegalStateException())
-                index--
-                indexToRemove =null
+                Utils.lockWrite(lock) {
+                    removeAt(indexToRemove ?: throw IllegalStateException())
+                    index--
+                    indexToRemove = null
+                }
             }
 
         }
     }
 
 
-    override val size: Int
-        get() = _size
+    override var size: Int
+        get() = store.get(counterRecid, Serializer.LONG_PACKED)!!.toInt()
+        protected set(size:Int) {
+            store.update(counterRecid, size.toLong(), Serializer.LONG_PACKED)
+        }
 
 
 }
