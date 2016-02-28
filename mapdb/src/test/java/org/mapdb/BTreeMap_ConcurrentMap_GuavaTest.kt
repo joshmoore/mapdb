@@ -32,8 +32,7 @@ class BTreeMap_ConcurrentMap_GuavaTest(
             val bools = if(TT.shortTest()) TT.boolsFalse else TT.bools
 
             for(inlineValue in bools)
-                //TODO replace reversedComparator with assertion that comparator is used instead of keySerializer.compare
-            for(reversedComparator in TT.boolsFalse)
+            for(otherComparator in bools)
             for(small in bools)
             for(storeType in 0..2)
             for(threadSafe in bools)
@@ -49,14 +48,26 @@ class BTreeMap_ConcurrentMap_GuavaTest(
 
                     val nodeSize = if(small) 4 else 32
                     val counterRecid = if(counter) store.put(0L, Serializer.LONG) else 0L
-                    val keySer = if(generic==null) Serializer.INTEGER else {
+                    var keySer = if(generic==null) Serializer.INTEGER else {
                             if(generic) Serializer.JAVA as Serializer<Int> else Serializer.INTEGER
                         }
+
+                    if(otherComparator)
+                        keySer = object:Serializer<Int> by keySer{
+                            override fun compare(o1: Int?, o2: Int?): Int {
+                                throw AssertionError()
+                            }
+
+                            override fun equals(a1: Int?, a2: Int?): Boolean {
+                                throw AssertionError()
+                            }
+                        }
+
                     val valSer = if(generic==null) Serializer.INTEGER else{
                             if(generic) Serializer.JAVA as Serializer<String> else Serializer.STRING
                         }
                     BTreeMap.make(keySerializer = keySer, valueSerializer = valSer,
-                            comparator = if(reversedComparator) Serializer.INTEGER.reversed() else Serializer.INTEGER ,
+                            comparator = if(otherComparator) Serializer.JAVA as Comparator<Int> else keySer,
                             store = store, maxNodeSize =  nodeSize, threadSafe = threadSafe,
                             counterRecid = counterRecid)
                 }))

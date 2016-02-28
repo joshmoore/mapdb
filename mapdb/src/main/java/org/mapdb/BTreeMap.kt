@@ -1500,7 +1500,7 @@ class BTreeMap<K,V>(
                 val okey = other.key ?: return false
                 val ovalue = other.value ?: return false
                 try {
-                    return keySerializer.equals(key, okey as K)
+                    return comparator.compare(key, okey as K)==0
                             && valueSerializer.equals(this.value!!, ovalue as V)
                 } catch(e: ClassCastException) {
                     return false

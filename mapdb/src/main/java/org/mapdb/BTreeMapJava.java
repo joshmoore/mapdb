@@ -605,7 +605,7 @@ public class BTreeMapJava {
             this.loInclusive = loInclusive;
             this.hi = hi;
             this.hiInclusive = hiInclusive;
-            if(lo!=null && hi!=null && m.getKeySerializer().compare(lo, hi)>0){
+            if(lo!=null && hi!=null && m.comparator().compare(lo, hi)>0){
                 throw new IllegalArgumentException();
             }
 
@@ -912,7 +912,7 @@ public class BTreeMapJava {
                     fromInclusive = loInclusive;
                 }
                 else {
-                    int c = m.getKeySerializer().compare(fromKey, lo);
+                    int c = m.comparator().compare(fromKey, lo);
                     if (c < 0 || (c == 0 && !loInclusive && fromInclusive))
                         throw new IllegalArgumentException("key out of range");
                 }
@@ -923,7 +923,7 @@ public class BTreeMapJava {
                     toInclusive = hiInclusive;
                 }
                 else {
-                    int c = m.getKeySerializer().compare(toKey, hi);
+                    int c = m.comparator().compare(toKey, hi);
                     if (c > 0 || (c == 0 && !hiInclusive && toInclusive))
                         throw new IllegalArgumentException("key out of range");
                 }
@@ -990,7 +990,7 @@ public class BTreeMapJava {
 
         private boolean tooLow(K key) {
             if (lo != null) {
-                int c = m.getKeySerializer().compare(key, lo);
+                int c = m.comparator().compare(key, lo);
                 if (c < 0 || (c == 0 && !loInclusive))
                     return true;
             }
@@ -999,7 +999,7 @@ public class BTreeMapJava {
 
         private boolean tooHigh(K key) {
             if (hi != null) {
-                int c = m.getKeySerializer().compare(key, hi);
+                int c = m.comparator().compare(key, hi);
                 if (c > 0 || (c == 0 && !hiInclusive))
                     return true;
             }
@@ -1075,7 +1075,7 @@ public class BTreeMapJava {
             this.loInclusive = loInclusive;
             this.hi = hi;
             this.hiInclusive = hiInclusive;
-            if(lo!=null && hi!=null && m.getKeySerializer().compare(lo, hi)>0){
+            if(lo!=null && hi!=null && m.comparator().compare(lo, hi)>0){
                 throw new IllegalArgumentException();
             }
 
@@ -1355,7 +1355,7 @@ public class BTreeMapJava {
                     fromInclusive = loInclusive;
                 }
                 else {
-                    int c = m.getKeySerializer().compare(fromKey, lo);
+                    int c = m.comparator().compare(fromKey, lo);
                     if (c < 0 || (c == 0 && !loInclusive && fromInclusive))
                         throw new IllegalArgumentException("key out of range");
                 }
@@ -1366,7 +1366,7 @@ public class BTreeMapJava {
                     toInclusive = hiInclusive;
                 }
                 else {
-                    int c = m.getKeySerializer().compare(toKey, hi);
+                    int c = m.comparator().compare(toKey, hi);
                     if (c > 0 || (c == 0 && !hiInclusive && toInclusive))
                         throw new IllegalArgumentException("key out of range");
                 }
@@ -1434,7 +1434,7 @@ public class BTreeMapJava {
 
         private boolean tooLow(K key) {
             if (lo != null) {
-                int c = m.getKeySerializer().compare(key, lo);
+                int c = m.comparator().compare(key, lo);
                 if (c < 0 || (c == 0 && !loInclusive))
                     return true;
             }
@@ -1443,7 +1443,7 @@ public class BTreeMapJava {
 
         private boolean tooHigh(K key) {
             if (hi != null) {
-                int c = m.getKeySerializer().compare(key, hi);
+                int c = m.comparator().compare(key, hi);
                 if (c > 0 || (c == 0 && !hiInclusive))
                     return true;
             }
