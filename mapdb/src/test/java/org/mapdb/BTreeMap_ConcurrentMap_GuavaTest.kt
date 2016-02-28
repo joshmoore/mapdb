@@ -32,7 +32,8 @@ class BTreeMap_ConcurrentMap_GuavaTest(
             val bools = if(TT.shortTest()) TT.boolsFalse else TT.bools
 
             for(inlineValue in bools)
-            for(reversedComparator in bools)
+                //TODO replace reversedComparator with assertion that comparator is used instead of keySerializer.compare
+            for(reversedComparator in TT.boolsFalse)
             for(small in bools)
             for(storeType in 0..2)
             for(threadSafe in bools)

@@ -102,11 +102,11 @@ public class BTreeMapJava {
 
         boolean isEmpty(Serializer keySerializer){
             int keySize = keySerializer.valueArraySize(keys);
-            return keySize == 2-intLeftEdge()-intRightEdge();
+            return !isLastKeyDouble() && keySize == 2-intLeftEdge()-intRightEdge();
         }
 
         @Nullable
-        public Object highKey(Serializer keySerializer) {
+        public <K> K highKey(Serializer<K> keySerializer) {
             int keysLen = keySerializer.valueArraySize(keys);
             return keySerializer.valueArrayGet(keys, keysLen-1);
         }

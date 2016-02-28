@@ -566,7 +566,7 @@ class Serializer_DeflateWrapperTest():SerializerTest<ByteArray>() {
 }
 
 
-class Serializer_Array(): SerializerTest<Array<Any>>(){
+open class Serializer_Array(): SerializerTest<Array<Any>>(){
     override fun randomValue() = Array<Any>(random.nextInt(30), {TT.randomString(random.nextInt(30))})
 
     override val serializer = Serializer.ArraySer(Serializer.STRING as Serializer<Any>)
@@ -580,6 +580,17 @@ class Serializer_Array(): SerializerTest<Array<Any>>(){
     }
 
 }
+
+
+class Serializer_DeltaArray():Serializer_Array(){
+
+    //TODO more tests with common prefix
+
+    override val serializer = Serializer.ArrayDeltaSer(Serializer.STRING as Serializer<Any>)
+
+
+}
+
 
 
 class SerializerLookup(){
