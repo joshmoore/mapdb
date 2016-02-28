@@ -11,7 +11,7 @@ public abstract class DataInput2 implements DataInput {
     /** DataInput on top of {@code byte[]} */
     public static final class ByteArray extends DataInput2 {
         protected final byte[] buf;
-        protected int pos;
+        public int pos;
 
         public ByteArray(byte[] b) {
             this(b, 0);

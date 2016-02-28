@@ -4,6 +4,7 @@ import org.mapdb.BTreeMap;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
+import org.mapdb.serializer.CompressionWrapper;
 
 
 public class btreemap_compressed {
@@ -14,7 +15,7 @@ public class btreemap_compressed {
         BTreeMap<Long, String> map = db.treeMap("map")
                 //TODO external values are not supported yet
                 //.valuesOutsideNodesEnable()
-                .valueSerializer(new Serializer.CompressionWrapper(Serializer.STRING))
+                .valueSerializer(new CompressionWrapper(Serializer.STRING))
                 .createOrOpen();
         //z
     }

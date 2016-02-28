@@ -36,7 +36,7 @@ class QueueLong(
             val timestamp:Long,
             val value:Long) {
 
-        object SERIALIZER : Serializer<Node>() {
+        object SERIALIZER : Serializer<Node> {
 
             override fun serialize(out: DataOutput2, value: Node) {
                 Serializer.RECID.serialize(out, value.prevRecid)

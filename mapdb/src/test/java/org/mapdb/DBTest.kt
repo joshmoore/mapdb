@@ -56,7 +56,7 @@ class DBTest{
 
     @Test fun hashMap_create_unresolvable_serializer(){
         val db = DB(store=StoreTrivial(), storeOpened = false)
-        val unresolvable = object:Serializer<String>(){
+        val unresolvable = object:Serializer<String>{
             override fun deserialize(input: DataInput2, available: Int): String? {
                 throw UnsupportedOperationException()
             }
@@ -320,7 +320,7 @@ class DBTest{
 
     @Test fun treeMap_create_unresolvable_serializer(){
         val db = DB(store=StoreTrivial(), storeOpened = false)
-        val unresolvable = object:Serializer<String>(){
+        val unresolvable = object:Serializer<String>{
             override fun deserialize(input: DataInput2, available: Int): String? {
                 throw UnsupportedOperationException()
             }
@@ -471,7 +471,7 @@ class DBTest{
 
     @Test fun hashSet_create_unresolvable_serializer(){
         val db = DB(store=StoreTrivial(), storeOpened = false)
-        val unresolvable = object:Serializer<String>(){
+        val unresolvable = object:Serializer<String>{
             override fun deserialize(input: DataInput2, available: Int): String? {
                 throw UnsupportedOperationException()
             }
@@ -730,7 +730,7 @@ class DBTest{
 
     @Test fun treeSet_create_unresolvable_serializer(){
         val db = DB(store=StoreTrivial(), storeOpened = false)
-        val unresolvable = object:Serializer<String>(){
+        val unresolvable = object:Serializer<String>{
             override fun deserialize(input: DataInput2, available: Int): String? {
                 throw UnsupportedOperationException()
             }

@@ -65,7 +65,7 @@ class BTreeMap<K,V>(
         }
 
 
-        internal val NO_VAL_SERIALIZER = object:Serializer<Boolean>(){
+        internal val NO_VAL_SERIALIZER = object:Serializer<Boolean>{
 
             override fun deserialize(input: DataInput2, available: Int): Boolean? {
                 throw IllegalAccessError();

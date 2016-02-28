@@ -28,7 +28,7 @@ open class DB(
         internal val RECID_NAME_CATALOG:Long = 1L
         internal val RECID_MAX_RESERVED:Long = 1L
 
-        internal val NAME_CATALOG_SERIALIZER:Serializer<SortedMap<String, String>> = object:Serializer<SortedMap<String, String>>(){
+        internal val NAME_CATALOG_SERIALIZER:Serializer<SortedMap<String, String>> = object:Serializer<SortedMap<String, String>>{
 
             override fun deserialize(input: DataInput2, available: Int): SortedMap<String, String>? {
                 val size = input.unpackInt()

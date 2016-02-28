@@ -108,7 +108,7 @@ import java.nio.ByteBuffer;
  * back-reference.
  * </p>
  */
-final class CompressLZF{
+public final class CompressLZF{
 
     /**
      * The number of entries in the hash table. The size is a trade-off between

@@ -96,7 +96,7 @@ class HTreeMapTest{
     }
 
     @Test fun delete_removes_recids_dir_collapse(){
-        val sequentialHashSerializer = object :Serializer<Int>(){
+        val sequentialHashSerializer = object :Serializer<Int>{
             override fun deserialize(input: DataInput2, available: Int): Int? {
                 return input.readInt()
             }

@@ -21,7 +21,7 @@ class HTreeMap_GuavaTest(val mapMaker:(generic:Boolean)-> ConcurrentMap<Any?, An
 
     companion object {
 
-        val singleHashSerializer = object : Serializer<Int>() {
+        val singleHashSerializer = object : Serializer<Int> {
             override fun deserialize(input: DataInput2, available: Int) = input.readInt()
 
             override fun serialize(out: DataOutput2, value: Int) {

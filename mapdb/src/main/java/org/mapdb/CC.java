@@ -5,7 +5,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Compilation Configuration. Uses dead code elimination to remove `if(CONSTANT){code}` blocks
  */
-interface CC{
+public interface CC{
 
     boolean LOG = true;
 

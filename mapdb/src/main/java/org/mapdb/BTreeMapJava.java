@@ -116,7 +116,7 @@ public class BTreeMapJava {
         }
     }
 
-    static class NodeSerializer extends Serializer<Node>{
+    static class NodeSerializer implements Serializer<Node>{
 
         final Serializer keySerializer;
         final Serializer valueSerializer;
