@@ -10,7 +10,7 @@ import java.io.IOException;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerClass implements Serializer<Class<?>> {
+public class SerializerClass extends GroupSerializerObjectArray<Class<?>> {
 
     @Override
     public void serialize(DataOutput2 out, Class<?> value) throws IOException {

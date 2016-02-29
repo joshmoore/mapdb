@@ -10,7 +10,7 @@ import java.io.Serializable;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerArray<T> implements Serializer<T[]>, Serializable {
+public class SerializerArray<T> extends GroupSerializerObjectArray<T[]>{
 
     private static final long serialVersionUID = -7443421486382532062L;
     protected final Serializer<T> serializer;
@@ -112,18 +112,4 @@ public class SerializerArray<T> implements Serializer<T[]>, Serializable {
         return SerializerUtils.compareInt(o1.length, o2.length);
     }
 
-
-    @Override
-    public Object valueArrayEmpty() {
-        return new Object[0][];
-    }
-
-    @Override
-    public Object valueArrayFromArray(Object[] objects) {
-        Object[][] ret = new Object[objects.length][];
-        for (int i = 0; i < ret.length; i++) {
-            ret[i] = (Object[]) objects[i];
-        }
-        return ret;
-    }
 }

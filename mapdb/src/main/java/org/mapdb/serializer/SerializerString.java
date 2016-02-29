@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 
-public class StringSerializer implements Serializer<String> {
+public class SerializerString implements GroupSerializer<String, char[][]> {
 
     @Override
     public void serialize(DataOutput2 out, String value) throws IOException {
@@ -27,8 +27,7 @@ public class StringSerializer implements Serializer<String> {
 
 
     @Override
-    public void valueArraySerialize(DataOutput2 out2, Object vals) throws IOException {
-        char[][] vals2 = (char[][]) vals;
+    public void valueArraySerialize(DataOutput2 out2, char[][] vals2) throws IOException {
         for(char[] v:vals2){
             out2.packInt(v.length);
             for(char c:v){
@@ -38,7 +37,7 @@ public class StringSerializer implements Serializer<String> {
     }
 
     @Override
-    public Object valueArrayDeserialize(DataInput2 in2, int size) throws IOException {
+    public char[][] valueArrayDeserialize(DataInput2 in2, int size) throws IOException {
         char[][] ret = new char[size][];
         for(int i=0;i<size;i++){
             int size2 = in2.unpackInt();
@@ -52,15 +51,13 @@ public class StringSerializer implements Serializer<String> {
     }
 
     @Override
-    public int valueArraySearch(Object keys, String key) {
+    public int valueArraySearch(char[][] keys, String key) {
         char[] key2 = key.toCharArray();
-        return Arrays.binarySearch((char[][])keys, key2, CHAR_ARRAY);
+        return Arrays.binarySearch(keys, key2, CHAR_ARRAY);
     }
 
     @Override
-    public int valueArraySearch(Object keys, String key, Comparator comparator) {
-        char[][] array = (char[][]) keys;
-
+    public int valueArraySearch(char[][] array, String key, Comparator comparator) {
         int lo = 0;
         int hi = array.length - 1;
 
@@ -79,23 +76,22 @@ public class StringSerializer implements Serializer<String> {
     }
 
     @Override
-    public String valueArrayGet(Object vals, int pos) {
-        return new String(((char[][])vals)[pos]);
+    public String valueArrayGet(char[][] vals, int pos) {
+        return new String(vals[pos]);
     }
 
     @Override
-    public int valueArraySize(Object vals) {
-        return ((char[][])vals).length;
+    public int valueArraySize(char[][] vals) {
+        return vals.length;
     }
 
     @Override
-    public Object valueArrayEmpty() {
+    public char[][] valueArrayEmpty() {
         return new char[0][];
     }
 
     @Override
-    public Object valueArrayPut(Object vals, int pos, String newValue) {
-        char[][] array = (char[][]) vals;
+    public char[][] valueArrayPut(char[][] array, int pos, String newValue) {
         final char[][] ret = Arrays.copyOf(array, array.length+1);
         if(pos<array.length){
             System.arraycopy(array, pos, ret, pos+1, array.length-pos);
@@ -106,15 +102,14 @@ public class StringSerializer implements Serializer<String> {
     }
 
     @Override
-    public Object valueArrayUpdateVal(Object vals, int pos, String newValue) {
-        char[][] cc = (char[][]) vals;
-        cc = cc.clone();
-        cc[pos] = newValue.toCharArray();
-        return cc;
+    public char[][] valueArrayUpdateVal(char[][] vals, int pos, String newValue) {
+        vals = vals.clone();
+        vals[pos] = newValue.toCharArray();
+        return vals;
     }
 
     @Override
-    public Object valueArrayFromArray(Object[] objects) {
+    public char[][] valueArrayFromArray(Object[] objects) {
         char[][] ret = new char[objects.length][];
         for(int i=0;i<ret.length;i++){
             ret[i] = ((String)objects[i]).toCharArray();
@@ -123,14 +118,13 @@ public class StringSerializer implements Serializer<String> {
     }
 
     @Override
-    public Object valueArrayCopyOfRange(Object vals, int from, int to) {
-        return Arrays.copyOfRange((char[][]) vals, from, to);
+    public char[][] valueArrayCopyOfRange(char[][] vals, int from, int to) {
+        return Arrays.copyOfRange(vals, from, to);
     }
 
     @Override
-    public Object valueArrayDeleteValue(Object vals, int pos) {
-        char[][] valsOrig = (char[][]) vals;
-        char[][] vals2 = new char[valsOrig.length-1][];
+    public char[][] valueArrayDeleteValue(char[][] vals, int pos) {
+        char[][] vals2 = new char[vals.length-1][];
         System.arraycopy(vals,0,vals2, 0, pos-1);
         System.arraycopy(vals, pos, vals2, pos-1, vals2.length-(pos-1));
         return vals2;

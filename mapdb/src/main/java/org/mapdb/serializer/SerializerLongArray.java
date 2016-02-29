@@ -10,7 +10,7 @@ import java.util.Arrays;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerLongArray implements Serializer<long[]> {
+public class SerializerLongArray extends GroupSerializerObjectArray<long[]> {
 
     @Override
     public void serialize(DataOutput2 out, long[] value) throws IOException {

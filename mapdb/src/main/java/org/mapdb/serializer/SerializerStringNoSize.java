@@ -2,6 +2,7 @@ package org.mapdb.serializer;
 
 import org.mapdb.DataInput2;
 import org.mapdb.DataOutput2;
+import org.mapdb.Serializer;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -10,7 +11,7 @@ import java.util.Comparator;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerStringNoSize extends StringSerializer {
+public class SerializerStringNoSize implements Serializer<String> {
 
     private final Charset UTF8_CHARSET = Charset.forName("UTF8");
 
@@ -39,63 +40,4 @@ public class SerializerStringNoSize extends StringSerializer {
         return true;
     }
 
-    @Override
-    public Object valueArrayCopyOfRange(Object vals, int from, int to) {
-        throw new UnsupportedOperationException("NOSIZE can not be used for values");
-    }
-
-    @Override
-    public Object valueArrayDeleteValue(Object vals, int pos) {
-        throw new UnsupportedOperationException("NOSIZE can not be used for values");
-    }
-
-    @Override
-    public Object valueArrayDeserialize(DataInput2 in2, int size) throws IOException {
-        throw new UnsupportedOperationException("NOSIZE can not be used for values");
-    }
-
-    @Override
-    public Object valueArrayEmpty() {
-        throw new UnsupportedOperationException("NOSIZE can not be used for values");
-    }
-
-    @Override
-    public Object valueArrayFromArray(Object[] objects) {
-        throw new UnsupportedOperationException("NOSIZE can not be used for values");
-    }
-
-    @Override
-    public String valueArrayGet(Object vals, int pos) {
-        throw new UnsupportedOperationException("NOSIZE can not be used for values");
-    }
-
-    @Override
-    public Object valueArrayPut(Object vals, int pos, String newValue) {
-        throw new UnsupportedOperationException("NOSIZE can not be used for values");
-    }
-
-    @Override
-    public int valueArraySearch(Object keys, String key) {
-        throw new UnsupportedOperationException("NOSIZE can not be used for values");
-    }
-
-    @Override
-    public int valueArraySearch(Object keys, String key, Comparator comparator) {
-        throw new UnsupportedOperationException("NOSIZE can not be used for values");
-    }
-
-    @Override
-    public void valueArraySerialize(DataOutput2 out2, Object vals) throws IOException {
-        throw new UnsupportedOperationException("NOSIZE can not be used for values");
-    }
-
-    @Override
-    public int valueArraySize(Object vals) {
-        throw new UnsupportedOperationException("NOSIZE can not be used for values");
-    }
-
-    @Override
-    public Object valueArrayUpdateVal(Object vals, int pos, String newValue) {
-        throw new UnsupportedOperationException("NOSIZE can not be used for values");
-    }
 }

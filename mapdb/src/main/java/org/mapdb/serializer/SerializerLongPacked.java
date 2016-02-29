@@ -20,14 +20,14 @@ public class SerializerLongPacked extends SerializerLong {
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
-        for (long o : (long[]) vals) {
+    public void valueArraySerialize(DataOutput2 out, long[] vals) throws IOException {
+        for (long o : vals) {
             out.packLong(o);
         }
     }
 
     @Override
-    public Object valueArrayDeserialize(DataInput2 in, int size) throws IOException {
+    public long[] valueArrayDeserialize(DataInput2 in, int size) throws IOException {
         long[] ret = new long[size];
         in.unpackLongArray(ret, 0, size);
         return ret;

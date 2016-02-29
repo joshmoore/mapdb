@@ -11,7 +11,7 @@ import java.math.BigInteger;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerBigDecimal implements Serializer<BigDecimal> {
+public class SerializerBigDecimal extends GroupSerializerObjectArray<BigDecimal> {
     @Override
     public void serialize(DataOutput2 out, BigDecimal value) throws IOException {
         BYTE_ARRAY.serialize(out, value.unscaledValue().toByteArray());

@@ -9,7 +9,7 @@ import java.io.IOException;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerByte implements Serializer<Byte> {
+public class SerializerByte extends GroupSerializerObjectArray<Byte> {
     @Override
     public void serialize(DataOutput2 out, Byte value) throws IOException {
         out.writeByte(value);

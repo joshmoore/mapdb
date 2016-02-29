@@ -9,7 +9,7 @@ import java.io.IOException;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerIllegalAccess implements Serializer<Object> {
+public class SerializerIllegalAccess extends GroupSerializerObjectArray<Object> {
     @Override
     public void serialize(DataOutput2 out, Object value) throws IOException {
         throw new IllegalAccessError();

@@ -4,6 +4,7 @@ import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList
 import org.eclipse.collections.impl.set.mutable.primitive.LongHashSet
 import org.junit.Assert.*
 import org.junit.Test
+import org.mapdb.serializer.GroupSerializerObjectArray
 import java.math.BigDecimal
 import java.util.*
 import java.util.concurrent.Executors
@@ -320,7 +321,7 @@ class DBTest{
 
     @Test fun treeMap_create_unresolvable_serializer(){
         val db = DB(store=StoreTrivial(), storeOpened = false)
-        val unresolvable = object:Serializer<String>{
+        val unresolvable = object:GroupSerializerObjectArray<String>(){
             override fun deserialize(input: DataInput2, available: Int): String? {
                 throw UnsupportedOperationException()
             }
@@ -730,7 +731,7 @@ class DBTest{
 
     @Test fun treeSet_create_unresolvable_serializer(){
         val db = DB(store=StoreTrivial(), storeOpened = false)
-        val unresolvable = object:Serializer<String>{
+        val unresolvable = object:GroupSerializerObjectArray<String>(){
             override fun deserialize(input: DataInput2, available: Int): String? {
                 throw UnsupportedOperationException()
             }

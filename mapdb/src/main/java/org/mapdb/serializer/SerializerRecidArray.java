@@ -12,7 +12,8 @@ import java.util.Comparator;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerRecidArray implements Serializer<long[]> {
+public class SerializerRecidArray extends SerializerLongArray{
+
     @Override
     public void serialize(DataOutput2 out, long[] value) throws IOException {
         out.packInt(value.length);
@@ -31,37 +32,5 @@ public class SerializerRecidArray implements Serializer<long[]> {
         return ret;
     }
 
-    ;
-
-
-    @Override
-    public int valueArraySearch(Object keys, long[] key) {
-        return LONG_ARRAY.valueArraySearch(keys, key);
-    }
-
-    @Override
-    public int valueArraySearch(Object keys, long[] key, Comparator comparator) {
-        return LONG_ARRAY.valueArraySearch(keys, key, comparator);
-    }
-
-    @Override
-    public boolean isTrusted() {
-        return true;
-    }
-
-    @Override
-    public boolean equals(long[] a1, long[] a2) {
-        return Arrays.equals(a1, a2);
-    }
-
-    @Override
-    public int hashCode(long[] bytes, int seed) {
-        return LONG_ARRAY.hashCode(bytes, seed);
-    }
-
-    @Override
-    public int compare(long[] o1, long[] o2) {
-        return LONG_ARRAY.compare(o1, o2);
-    }
 
 }

@@ -1,5 +1,6 @@
 package org.mapdb
 
+import org.mapdb.serializer.GroupSerializer
 import org.mapdb.volume.Volume
 import java.util.*
 import java.util.concurrent.ConcurrentMap
@@ -11,12 +12,16 @@ import java.util.function.BiConsumer
  */
 //TODO hashCodes for subcollections, use key/valueSerializers
 class SortedTableMap<K,V>(
-        override val keySerializer : Serializer<K>,
-        override val valueSerializer : Serializer<V>,
+        keySerializer : Serializer<K>,
+        valueSerializer : Serializer<V>,
         val pageSize:Int,
         internal val volume: Volume,
         override val hasValues: Boolean = false
 ): ConcurrentMap<K, V>, ConcurrentNavigableMap<K, V>, ConcurrentNavigableMapExtra<K,V> {
+
+    override val keySerializer: GroupSerializer<K, Any?> = keySerializer as GroupSerializer<K, Any?>
+    override val valueSerializer: GroupSerializer<V, Any?> = valueSerializer  as GroupSerializer<V, Any?>
+
 
     abstract class Consumer<K,V>:Pump.Consumer<Pair<K,V>, SortedTableMap<K,V>>(){
         fun take(key:K, value:V){
@@ -105,6 +110,9 @@ class SortedTableMap<K,V>(
                 pageSize:Int = CC.PAGE_SIZE.toInt(),
                 nodeSize:Int = CC.BTREEMAP_MAX_NODE_SIZE
         ):Consumer<K,V> {
+            val keySerializer = keySerializer as GroupSerializer<K, Any?>
+            val valueSerializer = valueSerializer as GroupSerializer<V, Any?>
+
             return object:Consumer<K,V>(){
 
                 val bytes = ByteArray(pageSize)
@@ -231,7 +239,7 @@ class SortedTableMap<K,V>(
     val pageCount = volume.getLong(PAGE_COUNT_OFFSET)
 
     /** first key at beginning of each page */
-    internal val pageKeys:Any = {
+    internal val pageKeys = {
         val keys = ArrayList<K>()
         for(i in 0 .. pageCount*pageSize step pageSize.toLong()){
             val ii:Long = if(i==0L) start.toLong() else i
@@ -239,10 +247,10 @@ class SortedTableMap<K,V>(
             val size = (i+volume.getInt(ii+8) - offset).toInt()
             val input = volume.getDataInput(offset, size);
             val keysSize = input.unpackInt()
-            val key = keySerializer.valueArrayBinaryGet(input, keysSize, 0)
+            val key = this.keySerializer.valueArrayBinaryGet(input, keysSize, 0)
             keys.add(key)
         }
-        keySerializer.valueArrayFromArray(keys.toArray())
+        this.keySerializer.valueArrayFromArray(keys.toArray())
     }()
 
     override fun containsKey(key: K?): Boolean {

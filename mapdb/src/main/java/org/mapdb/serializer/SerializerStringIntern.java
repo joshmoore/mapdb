@@ -10,7 +10,7 @@ import java.io.IOException;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerStringIntern implements Serializer<String> {
+public class SerializerStringIntern extends GroupSerializerObjectArray<String> {
     @Override
     public void serialize(DataOutput2 out, String value) throws IOException {
         out.writeUTF(value);

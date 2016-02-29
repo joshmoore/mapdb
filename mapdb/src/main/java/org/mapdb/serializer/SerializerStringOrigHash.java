@@ -10,7 +10,7 @@ import java.io.IOException;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerStringOrigHash extends StringSerializer {
+public class SerializerStringOrigHash extends SerializerString {
     @Override
     public void serialize(DataOutput2 out, String value) throws IOException {
         out.writeUTF(value);

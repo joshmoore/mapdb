@@ -29,7 +29,7 @@ import java.util.*;
  *
  * @author Jan Kotek
  */
-public interface Serializer<A> extends Comparator<A> {
+public interface Serializer<A> extends Comparator<A>{
 
 
     Serializer<Character> CHAR = new SerializerChar();
@@ -52,8 +52,10 @@ public interface Serializer<A> extends Comparator<A> {
      * Stores string size so can be used as collection serializer.
      * Does not handle null values
      */
-    Serializer<String> STRING = new StringSerializer();
+    Serializer<String> STRING = new SerializerString();
 
+    Serializer<String> STRING_DELTA = new SerializerStringDelta();
+    Serializer<String> STRING_DELTA2 = new SerializerStringDelta2();
 
 
 
@@ -145,34 +147,37 @@ public interface Serializer<A> extends Comparator<A> {
     /**
      * Serializes {@code byte[]} it adds header which contains size information
      */
-    Serializer<byte[] > BYTE_ARRAY = new SerializerByteArray();
+    Serializer<byte[]> BYTE_ARRAY = new SerializerByteArray();
+
+    Serializer<byte[]> BYTE_ARRAY_DELTA = new SerializerByteArrayDelta();
+    Serializer<byte[]> BYTE_ARRAY_DELTA2 = new SerializerByteArrayDelta2();
 
     /**
      * Serializes {@code byte[]} directly into underlying store
      * It does not store size, so it can not be used in Maps and other collections.
      */
-    Serializer<byte[] > BYTE_ARRAY_NOSIZE = new SerializerByteArrayNoSize();
+    Serializer<byte[]> BYTE_ARRAY_NOSIZE = new SerializerByteArrayNoSize();
 
     /**
      * Serializes {@code char[]} it adds header which contains size information
      */
-    Serializer<char[] > CHAR_ARRAY = new SerializerCharArray();
+    Serializer<char[]> CHAR_ARRAY = new SerializerCharArray();
 
 
     /**
      * Serializes {@code int[]} it adds header which contains size information
      */
-    Serializer<int[] > INT_ARRAY = new SerializerIntArray();
+    Serializer<int[]> INT_ARRAY = new SerializerIntArray();
 
     /**
      * Serializes {@code long[]} it adds header which contains size information
      */
-    Serializer<long[] > LONG_ARRAY = new SerializerLongArray();
+    Serializer<long[]> LONG_ARRAY = new SerializerLongArray();
 
     /**
      * Serializes {@code double[]} it adds header which contains size information
      */
-    Serializer<double[] > DOUBLE_ARRAY = new SerializerDoubleArray();
+    Serializer<double[]> DOUBLE_ARRAY = new SerializerDoubleArray();
 
 
     /** Serializer which uses standard Java Serialization with {@link java.io.ObjectInputStream} and {@link java.io.ObjectOutputStream} */
@@ -331,105 +336,77 @@ public interface Serializer<A> extends Comparator<A> {
         return DataIO.intHash(a.hashCode()+seed);
     }
 
-    default A valueArrayBinaryGet(DataInput2 input, int keysLen, int pos) throws IOException {
-        Object keys = valueArrayDeserialize(input, pos+1);
-        return valueArrayGet(keys, pos);
-//        A a=null;
-//        while(pos-- >= 0){
-//            a = deserialize(input, -1);
-//        }
-//        return a;
-    }
-
-
-
-    default int valueArrayBinarySearch(A key, DataInput2 input, int keysLen, Comparator comparator) throws IOException {
-        Object keys = valueArrayDeserialize(input, keysLen);
-        return valueArraySearch(keys, key, comparator);
-//        for(int pos=0; pos<keysLen; pos++){
-//            A from = deserialize(input, -1);
-//            int comp = compare(key, from);
-//            if(comp==0)
-//                return pos;
-//            if(comp<0)
-//                return -(pos+1);
-//        }
-//        return -(keysLen+1);
-    }
-
-
-    default int valueArraySearch(Object keys, A key){
-        return Arrays.binarySearch((Object[])keys, key, (Comparator<Object>)this);
-    }
-
-    default int valueArraySearch(Object keys, A key, Comparator comparator){
-        if(comparator==this)
-            return valueArraySearch(keys, key);
-        return Arrays.binarySearch((Object[])keys, key, comparator);
-    }
-
-    @SuppressWarnings("unchecked")
-    default void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
-        Object[] vals2 = (Object[]) vals;
-        for(Object o:vals2){
-            serialize(out, (A) o);
-        }
-    }
-
-    default Object valueArrayDeserialize(DataInput2 in, int size) throws IOException {
-        Object[] ret = new Object[size];
-        for(int i=0;i<size;i++){
-            ret[i] = deserialize(in,-1);
-        }
-        return ret;
-    }
-
-    @SuppressWarnings("unchecked")
-    default A valueArrayGet(Object vals, int pos){
-        return (A) ((Object[])vals)[pos];
-    }
-
-    default int valueArraySize(Object vals){
-        return ((Object[])vals).length;
-    }
-
-    default Object valueArrayEmpty(){
-        return new Object[0];
-    }
-
-    default Object valueArrayPut(Object vals, int pos, A newValue) {
-        return DataIO.arrayPut((Object[]) vals, pos, newValue);
-    }
-
-
-    default Object valueArrayUpdateVal(Object vals, int pos, A newValue) {
-        Object[] vals2 = ((Object[])vals).clone();
-        vals2[pos] = newValue;
-        return vals2;
-    }
-
-    default Object valueArrayFromArray(Object[] objects) {
-        return objects;
-    }
-
-    default Object valueArrayCopyOfRange(Object vals, int from, int to) {
-        return Arrays.copyOfRange((Object[])vals, from, to);
-    }
-
-    default Object valueArrayDeleteValue(Object vals, int pos) {
-        return DataIO.arrayDelete((Object[]) vals, pos, 1);
-    }
-
-    default Object[] valueArrayToArray(Object vals){
-        Object[] ret = new Object[valueArraySize(vals)];
-        for(int i=0;i<ret.length;i++){
-            ret[i] = valueArrayGet(vals,i);
-        }
-        return ret;
-    }
-
     default boolean needsAvailableSizeHint(){
         return false;
     }
 
+//
+// TODO code from 2.0, perhaps it will be useful, do performance benchmarks etc
+//    /**
+//     * Find the first children node with a key equal or greater than the given key.
+//     * If all items are smaller it returns {@code keyser.length(keys)}
+//     *
+//     * @param node BTree Node to find position in
+//     * @param key key whose position needs to be find
+//     * @return position of key in node
+//     */
+//    public int findChildren(final BTreeMap.BNode node, final Object key) {
+//        KEYS keys = (KEYS) node.keys;
+//        int keylen = length(keys);
+//        int left = 0;
+//        int right = keylen;
+//
+//        int middle;
+//        //$DELAY$
+//        // binary search
+//        for(;;) {
+//            //$DELAY$
+//            middle = (left + right) / 2;
+//            if(middle==keylen)
+//                return middle+node.leftEdgeInc(); //null is positive infinitive
+//            if (compareIsSmaller(keys,middle, (KEY) key)) {
+//                left = middle + 1;
+//            } else {
+//                right = middle;
+//            }
+//            if (left >= right) {
+//                return  right+node.leftEdgeInc();
+//            }
+//        }
+//    }
+//
+//    public int findChildren2(final BTreeMap.BNode node, final Object key) {
+//        KEYS keys = (KEYS) node.keys;
+//        int keylen = length(keys);
+//
+//        int left = 0;
+//        int right = keylen;
+//        int comp;
+//        int middle;
+//        //$DELAY$
+//        // binary search
+//        while (true) {
+//            //$DELAY$
+//            middle = (left + right) / 2;
+//            if(middle==keylen)
+//                return -1-(middle+node.leftEdgeInc()); //null is positive infinitive
+//            comp = compare(keys, middle, (KEY) key);
+//            if(comp==0){
+//                //try one before last, in some cases it might be duplicate of last
+//                if(!node.isRightEdge() && middle==keylen-1 && middle>0
+//                        && compare(keys,middle-1,(KEY)key)==0){
+//                    middle--;
+//                }
+//                return middle+node.leftEdgeInc();
+//            } else if ( comp< 0) {
+//                left = middle +1;
+//            } else {
+//                right = middle;
+//            }
+//            if (left >= right) {
+//                return  -1-(right+node.leftEdgeInc());
+//            }
+//        }
+//
+//    }
 }

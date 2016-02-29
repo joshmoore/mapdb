@@ -3,14 +3,15 @@ package org.mapdb
 import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet
 import org.junit.Test
 import org.mapdb.BTreeMapJava.*
+import org.mapdb.serializer.GroupSerializer
 import java.util.*
 import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.test.*
 
 class BTreeMapTest {
 
-    val keyser = Serializer.JAVA
-    val COMPARATOR = keyser
+    val keyser = Serializer.JAVA as GroupSerializer<Any?, Any?>
+    val COMPARATOR = keyser as Comparator<Any?>
 
     @Test fun node_search() {
         val node = Node(
@@ -113,13 +114,13 @@ class BTreeMapTest {
                 arrayOf(2, 3, 4)
         )
 
-        assertEquals(null, leafGet(node, COMPARATOR, 10, keyser, Serializer.JAVA))
-        assertEquals(2, leafGet(node, COMPARATOR, 20, keyser, Serializer.JAVA))
-        assertEquals(null, leafGet(node, COMPARATOR, 21, keyser, Serializer.JAVA))
-        assertEquals(3, leafGet(node, COMPARATOR, 30, keyser, Serializer.JAVA))
-        assertEquals(4, leafGet(node, COMPARATOR, 40, keyser, Serializer.JAVA))
-        assertEquals(LINK, leafGet(node, COMPARATOR, 41, keyser, Serializer.JAVA))
-        assertEquals(LINK, leafGet(node, COMPARATOR, 50, keyser, Serializer.JAVA))
+        assertEquals(null, leafGet(node, COMPARATOR, 10, keyser, keyser))
+        assertEquals(2, leafGet(node, COMPARATOR, 20, keyser, keyser))
+        assertEquals(null, leafGet(node, COMPARATOR, 21, keyser, keyser))
+        assertEquals(3, leafGet(node, COMPARATOR, 30, keyser, keyser))
+        assertEquals(4, leafGet(node, COMPARATOR, 40, keyser, keyser))
+        assertEquals(LINK, leafGet(node, COMPARATOR, 41, keyser, keyser))
+        assertEquals(LINK, leafGet(node, COMPARATOR, 50, keyser, keyser))
     }
 
     @Test fun leafGetLink() {
@@ -130,14 +131,14 @@ class BTreeMapTest {
                 arrayOf(2, 3, 4)
         )
 
-        assertEquals(null, leafGet(node, COMPARATOR, 10, keyser, Serializer.JAVA))
-        assertEquals(2, leafGet(node, COMPARATOR, 20, keyser, Serializer.JAVA))
-        assertEquals(null, leafGet(node, COMPARATOR, 21, keyser, Serializer.JAVA))
-        assertEquals(3, leafGet(node, COMPARATOR, 30, keyser, Serializer.JAVA))
-        assertEquals(4, leafGet(node, COMPARATOR, 40, keyser, Serializer.JAVA))
-        assertEquals(null, leafGet(node, COMPARATOR, 41, keyser, Serializer.JAVA))
-        assertEquals(null, leafGet(node, COMPARATOR, 50, keyser, Serializer.JAVA))
-        assertEquals(LINK, leafGet(node, COMPARATOR, 51, keyser, Serializer.JAVA))
+        assertEquals(null, leafGet(node, COMPARATOR, 10, keyser, keyser))
+        assertEquals(2, leafGet(node, COMPARATOR, 20, keyser, keyser))
+        assertEquals(null, leafGet(node, COMPARATOR, 21, keyser, keyser))
+        assertEquals(3, leafGet(node, COMPARATOR, 30, keyser, keyser))
+        assertEquals(4, leafGet(node, COMPARATOR, 40, keyser, keyser))
+        assertEquals(null, leafGet(node, COMPARATOR, 41, keyser, keyser))
+        assertEquals(null, leafGet(node, COMPARATOR, 50, keyser, keyser))
+        assertEquals(LINK, leafGet(node, COMPARATOR, 51, keyser, keyser))
     }
 
     @Test fun flags() {

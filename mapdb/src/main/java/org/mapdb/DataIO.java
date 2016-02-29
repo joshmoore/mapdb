@@ -702,7 +702,7 @@ public final class DataIO {
     }
 
     /* expand array size by 1, and put value at given position. No items from original array are lost*/
-    protected static Object[] arrayPut(final Object[] array, final int pos, final Object value){
+    public static Object[] arrayPut(final Object[] array, final int pos, final Object value){
         final Object[] ret = Arrays.copyOf(array, array.length+1);
         if(pos<array.length){
             System.arraycopy(array, pos, ret, pos+1, array.length-pos);

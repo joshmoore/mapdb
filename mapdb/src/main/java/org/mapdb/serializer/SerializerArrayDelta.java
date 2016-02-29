@@ -19,20 +19,19 @@ public class SerializerArrayDelta<T> extends SerializerArray<T> {
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
-        Object[][] keys = (Object[][]) vals;
-        if (keys.length == 0)
+    public void valueArraySerialize(DataOutput2 out, Object[] vals) throws IOException {
+        if (vals.length == 0)
             return;
         //write first array
-        Object[] prevKey = keys[0];
+        Object[] prevKey = (Object[]) vals[0];
         out.packInt(prevKey.length);
         for (Object key : prevKey) {
             serializer.serialize(out, (T) key);
         }
 
         //write remaining arrays
-        for (int i = 1; i < keys.length; i++) {
-            Object[] key = keys[i];
+        for (int i = 1; i < vals.length; i++) {
+            Object[] key = (Object[]) vals[i];
             //calculate number of entries equal with prevKey
             int len = Math.min(key.length, prevKey.length);
             int pos = 0;
@@ -51,8 +50,8 @@ public class SerializerArrayDelta<T> extends SerializerArray<T> {
     }
 
     @Override
-    public Object valueArrayDeserialize(DataInput2 in, final int size) throws IOException {
-        Object[][] ret = new Object[size][];
+    public Object[] valueArrayDeserialize(DataInput2 in, final int size) throws IOException {
+        Object[] ret = new Object[size];
         if (size == 0)
             return ret;
         int ss = in.unpackInt();

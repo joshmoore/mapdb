@@ -9,7 +9,7 @@ import java.io.IOException;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerChar implements Serializer<Character> {
+public class SerializerChar extends GroupSerializerObjectArray<Character> {
     @Override
     public void serialize(DataOutput2 out, Character value) throws IOException {
         out.writeChar(value.charValue());

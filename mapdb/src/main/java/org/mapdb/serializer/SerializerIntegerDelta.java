@@ -22,8 +22,7 @@ public class SerializerIntegerDelta extends SerializerInteger {
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
-        int[] keys = (int[]) vals;
+    public void valueArraySerialize(DataOutput2 out, int[] keys) throws IOException {
         int prev = keys[0];
         out.packInt(prev);
         for (int i = 1; i < keys.length; i++) {
@@ -37,7 +36,7 @@ public class SerializerIntegerDelta extends SerializerInteger {
     }
 
     @Override
-    public Object valueArrayDeserialize(DataInput2 in, int size) throws IOException {
+    public int[] valueArrayDeserialize(DataInput2 in, int size) throws IOException {
         int[] ret = new int[size];
         int prev = 0;
         for (int i = 0; i < size; i++) {
@@ -60,7 +59,7 @@ public class SerializerIntegerDelta extends SerializerInteger {
 
     @Override
     public int valueArrayBinarySearch(Integer key, DataInput2 input, int keysLen, Comparator comparator) throws IOException {
-        Object keys = valueArrayDeserialize(input, keysLen);
+        int[] keys = valueArrayDeserialize(input, keysLen);
         return valueArraySearch(keys, key, comparator);
     }
 

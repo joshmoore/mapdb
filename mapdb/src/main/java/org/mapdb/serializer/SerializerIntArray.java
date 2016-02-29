@@ -10,7 +10,7 @@ import java.util.Arrays;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerIntArray implements Serializer<int[]> {
+public class SerializerIntArray extends GroupSerializerObjectArray<int[]> {
 
     @Override
     public void serialize(DataOutput2 out, int[] value) throws IOException {

@@ -10,7 +10,7 @@ import java.util.Arrays;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerShortArray implements Serializer<short[]> {
+public class SerializerShortArray extends GroupSerializerObjectArray<short[]> {
     @Override
     public void serialize(DataOutput2 out, short[] value) throws IOException {
         out.packInt(value.length);

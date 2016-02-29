@@ -33,8 +33,8 @@ public class SerializerLong extends SerializerEightByte<Long> {
     }
 
     @Override
-    public int valueArraySearch(Object keys, Long key) {
-        return Arrays.binarySearch((long[])keys, key);
+    public int valueArraySearch(long[] keys, Long key) {
+        return Arrays.binarySearch(keys, key);
     }
 
 

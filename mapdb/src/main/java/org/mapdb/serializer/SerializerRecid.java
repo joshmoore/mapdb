@@ -44,19 +44,19 @@ public class SerializerRecid extends SerializerEightByte<Long> {
 
 
     @Override
-    public int valueArraySearch(Object keys, Long key) {
-        return Arrays.binarySearch((long[]) keys, key);
+    public int valueArraySearch(long[] keys, Long key) {
+        return Arrays.binarySearch(keys, key);
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
+    public void valueArraySerialize(DataOutput2 out, long[] vals) throws IOException {
         for (long o : (long[]) vals) {
             DataIO.packRecid(out, o);
         }
     }
 
     @Override
-    public Object valueArrayDeserialize(DataInput2 in, int size) throws IOException {
+    public long[] valueArrayDeserialize(DataInput2 in, int size) throws IOException {
         long[] ret = new long[size];
         for (int i = 0; i < size; i++) {
             ret[i] = DataIO.unpackRecid(in);

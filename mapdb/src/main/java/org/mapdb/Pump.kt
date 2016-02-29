@@ -3,6 +3,7 @@ package org.mapdb
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList
 import java.util.*
 import org.mapdb.BTreeMapJava.*
+import org.mapdb.serializer.GroupSerializer
 
 /**
  * Data streaming
@@ -37,6 +38,8 @@ object Pump{
             dirNodeSize:Int = CC.BTREEMAP_MAX_NODE_SIZE*3/4
     ): Consumer<Pair<K,V>,Unit>{
 
+        val keySerializer = keySerializer as GroupSerializer<K, Any?>
+        val valueSerializer = valueSerializer as GroupSerializer<V, Any?>
         var prevKey:K? = null
 
         class DirData {

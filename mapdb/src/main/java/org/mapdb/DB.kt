@@ -2,6 +2,7 @@ package org.mapdb
 
 import org.eclipse.collections.api.map.primitive.MutableLongLongMap
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList
+import org.mapdb.serializer.GroupSerializer
 import java.io.Closeable
 import java.security.SecureRandom
 import java.util.*
@@ -765,7 +766,7 @@ open class DB(
             }
 
             val rootRecidRecid2 = _rootRecidRecid
-                    ?: BTreeMap.putEmptyRoot(db.store, _keySerializer, _valueSerializer)
+                    ?: BTreeMap.putEmptyRoot(db.store, _keySerializer as GroupSerializer<K, Any?>, _valueSerializer as GroupSerializer<V,Any?>)
             catalog[name + Keys.rootRecidRecid] = rootRecidRecid2.toString()
 
             val counterRecid2 =

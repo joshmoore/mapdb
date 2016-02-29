@@ -11,7 +11,7 @@ import java.util.Comparator;
 /**
  * Created by jan on 2/28/16.
  */
-public abstract class SerializerFourByte<E> implements Serializer<E> {
+public abstract class SerializerFourByte<E> implements GroupSerializer<E,int[]> {
 
     protected abstract E unpack(int l);
 
@@ -28,24 +28,22 @@ public abstract class SerializerFourByte<E> implements Serializer<E> {
     }
 
     @Override
-    public E valueArrayGet(Object vals, int pos) {
-        return unpack(((int[]) vals)[pos]);
+    public E valueArrayGet(int[] vals, int pos) {
+        return unpack(vals[pos]);
     }
 
     @Override
-    public int valueArraySize(Object vals) {
-        return ((int[]) vals).length;
+    public int valueArraySize(int[] vals) {
+        return vals.length;
     }
 
     @Override
-    public Object valueArrayEmpty() {
+    public int[] valueArrayEmpty() {
         return new int[0];
     }
 
     @Override
-    public Object valueArrayPut(Object vals, int pos, E newValue) {
-
-        int[] array = (int[]) vals;
+    public int[] valueArrayPut(int[] array, int pos, E newValue) {
         final int[] ret = Arrays.copyOf(array, array.length + 1);
         if (pos < array.length) {
             System.arraycopy(array, pos, ret, pos + 1, array.length - pos);
@@ -55,14 +53,14 @@ public abstract class SerializerFourByte<E> implements Serializer<E> {
     }
 
     @Override
-    public Object valueArrayUpdateVal(Object vals, int pos, E newValue) {
-        int[] vals2 = ((int[]) vals).clone();
-        vals2[pos] = pack(newValue);
-        return vals2;
+    public int[] valueArrayUpdateVal(int[] vals, int pos, E newValue) {
+        vals = vals.clone();
+        vals[pos] = pack(newValue);
+        return vals;
     }
 
     @Override
-    public Object valueArrayFromArray(Object[] objects) {
+    public int[] valueArrayFromArray(Object[] objects) {
         int[] ret = new int[objects.length];
         int pos = 0;
 
@@ -74,14 +72,13 @@ public abstract class SerializerFourByte<E> implements Serializer<E> {
     }
 
     @Override
-    public Object valueArrayCopyOfRange(Object vals, int from, int to) {
-        return Arrays.copyOfRange((int[]) vals, from, to);
+    public int[] valueArrayCopyOfRange(int[] vals, int from, int to) {
+        return Arrays.copyOfRange(vals, from, to);
     }
 
     @Override
-    public Object valueArrayDeleteValue(Object vals, int pos) {
-        int[] valsOrig = (int[]) vals;
-        int[] vals2 = new int[valsOrig.length - 1];
+    public int[] valueArrayDeleteValue(int[] vals, int pos) {
+        int[] vals2 = new int[vals.length - 1];
         System.arraycopy(vals, 0, vals2, 0, pos - 1);
         System.arraycopy(vals, pos, vals2, pos - 1, vals2.length - (pos - 1));
         return vals2;
@@ -89,14 +86,14 @@ public abstract class SerializerFourByte<E> implements Serializer<E> {
 
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
-        for (int o : (int[]) vals) {
+    public void valueArraySerialize(DataOutput2 out, int[] vals) throws IOException {
+        for (int o : vals) {
             out.writeInt(o);
         }
     }
 
     @Override
-    public Object valueArrayDeserialize(DataInput2 in, int size) throws IOException {
+    public int[] valueArrayDeserialize(DataInput2 in, int size) throws IOException {
         int[] ret = new int[size];
         for (int i = 0; i < size; i++) {
             ret[i] = in.readInt();
@@ -105,10 +102,9 @@ public abstract class SerializerFourByte<E> implements Serializer<E> {
     }
 
     @Override
-    final public int valueArraySearch(Object keys, E key, Comparator comparator) {
+    final public int valueArraySearch(int[] array, E key, Comparator comparator) {
         if (comparator == this)
-            return valueArraySearch(keys, key);
-        int[] array = (int[]) keys;
+            return valueArraySearch(array, key);
 
         int lo = 0;
         int hi = array.length - 1;

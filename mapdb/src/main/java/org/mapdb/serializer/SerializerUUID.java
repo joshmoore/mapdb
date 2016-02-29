@@ -12,7 +12,7 @@ import java.util.UUID;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerUUID implements Serializer<java.util.UUID> {
+public class SerializerUUID implements GroupSerializer<java.util.UUID,long[]> {
     @Override
     public void serialize(DataOutput2 out, UUID value) throws IOException {
         out.writeLong(value.getMostSignificantBits());
@@ -51,24 +51,24 @@ public class SerializerUUID implements Serializer<java.util.UUID> {
     }
 
     @Override
-    public int valueArraySearch(Object keys, UUID key) {
+    public int valueArraySearch(long[] keys, UUID key) {
         return Arrays.binarySearch(valueArrayToArray(keys), key);
     }
 
     @Override
-    public int valueArraySearch(Object keys, UUID key, Comparator comparator) {
+    public int valueArraySearch(long[] keys, UUID key, Comparator comparator) {
         return Arrays.binarySearch(valueArrayToArray(keys), key, comparator);
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
-        for (long o : (long[]) vals) {
+    public void valueArraySerialize(DataOutput2 out, long[] vals) throws IOException {
+        for (long o : vals) {
             out.writeLong(o);
         }
     }
 
     @Override
-    public Object valueArrayDeserialize(DataInput2 in, int size) throws IOException {
+    public long[] valueArrayDeserialize(DataInput2 in, int size) throws IOException {
         size *= 2;
         long[] ret = new long[size];
         for (int i = 0; i < size; i++) {
@@ -78,27 +78,25 @@ public class SerializerUUID implements Serializer<java.util.UUID> {
     }
 
     @Override
-    public UUID valueArrayGet(Object vals, int pos) {
-        long[] v = (long[]) vals;
+    public UUID valueArrayGet(long[] vals, int pos) {
         pos *= 2;
-        return new UUID(v[pos++], v[pos]);
+        return new UUID(vals[pos++], vals[pos]);
     }
 
     @Override
-    public int valueArraySize(Object vals) {
-        return ((long[]) vals).length / 2;
+    public int valueArraySize(long[] vals) {
+        return vals.length / 2;
     }
 
     @Override
-    public Object valueArrayEmpty() {
+    public long[] valueArrayEmpty() {
         return new long[0];
     }
 
     @Override
-    public Object valueArrayPut(Object vals, int pos, UUID newValue) {
+    public long[] valueArrayPut(long[] array, int pos, UUID newValue) {
         pos *= 2;
 
-        long[] array = (long[]) vals;
         final long[] ret = Arrays.copyOf(array, array.length + 2);
 
         if (pos < array.length) {
@@ -110,17 +108,17 @@ public class SerializerUUID implements Serializer<java.util.UUID> {
     }
 
     @Override
-    public Object valueArrayUpdateVal(Object vals, int pos, UUID newValue) {
+    public long[] valueArrayUpdateVal(long[] vals, int pos, UUID newValue) {
         pos *= 2;
-        long[] vals2 = ((long[]) vals).clone();
-        vals2[pos++] = newValue.getMostSignificantBits();
-        vals2[pos] = newValue.getLeastSignificantBits();
-        return vals2;
+        vals = vals.clone();
+        vals[pos++] = newValue.getMostSignificantBits();
+        vals[pos] = newValue.getLeastSignificantBits();
+        return vals;
     }
 
 
     @Override
-    public Object valueArrayFromArray(Object[] objects) {
+    public long[] valueArrayFromArray(Object[] objects) {
         long[] ret = new long[objects.length * 2];
         int pos = 0;
 
@@ -134,15 +132,14 @@ public class SerializerUUID implements Serializer<java.util.UUID> {
     }
 
     @Override
-    public Object valueArrayCopyOfRange(Object vals, int from, int to) {
-        return Arrays.copyOfRange((long[]) vals, from * 2, to * 2);
+    public long[] valueArrayCopyOfRange(long[] vals, int from, int to) {
+        return Arrays.copyOfRange(vals, from * 2, to * 2);
     }
 
     @Override
-    public Object valueArrayDeleteValue(Object vals, int pos) {
+    public long[] valueArrayDeleteValue(long[] vals, int pos) {
         pos *= 2;
-        long[] valsOrig = (long[]) vals;
-        long[] vals2 = new long[valsOrig.length - 2];
+        long[] vals2 = new long[vals.length - 2];
         System.arraycopy(vals, 0, vals2, 0, pos - 2);
         System.arraycopy(vals, pos, vals2, pos - 2, vals2.length - (pos - 2));
         return vals2;

@@ -7,11 +7,12 @@ import org.mapdb.Serializer;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerByteArray implements Serializer<byte[]> {
+public class SerializerByteArray implements GroupSerializer<byte[], byte[][]> {
 
     @Override
     public void serialize(DataOutput2 out, byte[] value) throws IOException {
@@ -26,6 +27,7 @@ public class SerializerByteArray implements Serializer<byte[]> {
         in.readFully(ret);
         return ret;
     }
+
 
     @Override
     public boolean isTrusted() {
@@ -53,5 +55,89 @@ public class SerializerByteArray implements Serializer<byte[]> {
                 return b1 - b2;
         }
         return o1.length - o2.length;
+    }
+
+    @Override
+    public int valueArraySearch(byte[][] keys, byte[] key) {
+        return Arrays.binarySearch(keys, key, Serializer.BYTE_ARRAY);
+    }
+
+    @Override
+    public int valueArraySearch(byte[][] keys, byte[] key, Comparator comparator) {
+        //TODO PERF optimize search
+        Object[] v = valueArrayToArray(keys);
+        return Arrays.binarySearch(v, key, comparator);
+    }
+
+    @Override
+    public void valueArraySerialize(DataOutput2 out, byte[][] vals) throws IOException {
+        out.packInt(vals.length);
+        for(byte[]b:vals){
+            Serializer.BYTE_ARRAY.serialize(out, b);
+        }
+    }
+
+    @Override
+    public byte[][] valueArrayDeserialize(DataInput2 in, int size) throws IOException {
+        int s = in.unpackInt();
+        byte[][] ret = new byte[s][];
+        for(int i=0;i<s;i++) {
+            ret[i] = Serializer.BYTE_ARRAY.deserialize(in, -1);
+        }
+        return ret;
+    }
+
+    @Override
+    public byte[] valueArrayGet(byte[][] vals, int pos) {
+        return vals[pos];
+    }
+
+    @Override
+    public int valueArraySize(byte[][] vals) {
+        return vals.length;
+    }
+
+    @Override
+    public byte[][] valueArrayEmpty() {
+        return new byte[0][];
+    }
+
+    @Override
+    public byte[][] valueArrayPut(byte[][] array, int pos, byte[] newValue) {
+        final byte[][] ret = Arrays.copyOf(array, array.length+1);
+        if(pos<array.length){
+            System.arraycopy(array, pos, ret, pos+1, array.length-pos);
+        }
+        ret[pos] = newValue;
+        return ret;
+    }
+
+    @Override
+    public byte[][] valueArrayUpdateVal(byte[][] vals, int pos, byte[] newValue) {
+        vals = vals.clone();
+        vals[pos] = newValue;
+        return vals;
+    }
+
+    @Override
+    public byte[][] valueArrayFromArray(Object[] objects) {
+        byte[][] ret = new byte[objects.length][];
+        for(int i=0;i<ret.length;i++){
+            ret[i] = (byte[])objects[i];
+        }
+        return ret;
+    }
+
+    @Override
+    public byte[][] valueArrayCopyOfRange(byte[][] vals, int from, int to) {
+        return Arrays.copyOfRange(vals, from, to);
+    }
+
+    @Override
+    public byte[][] valueArrayDeleteValue(byte[][] vals, int pos) {
+        byte[][] vals2 = new byte[vals.length-1][];
+        System.arraycopy(vals,0,vals2, 0, pos-1);
+        System.arraycopy(vals, pos, vals2, pos-1, vals2.length-(pos-1));
+        return vals2;
     }
 }

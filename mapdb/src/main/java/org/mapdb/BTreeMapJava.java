@@ -2,6 +2,7 @@ package org.mapdb;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.mapdb.serializer.GroupSerializer;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -32,7 +33,7 @@ public class BTreeMapJava {
         /** represents values for leaf node, or ArrayLong of children for dir node  */
         final Object values;
 
-        Node(int flags, long link, Object keys, Object values, Serializer keySerializer, Serializer valueSerializer) {
+        Node(int flags, long link, Object keys, Object values, GroupSerializer keySerializer, GroupSerializer valueSerializer) {
             this(flags, link, keys, values);
 
             if(CC.ASSERT) {
@@ -100,13 +101,13 @@ public class BTreeMapJava {
             return ((flags)&1)==1;
         }
 
-        boolean isEmpty(Serializer keySerializer){
+        boolean isEmpty(GroupSerializer keySerializer){
             int keySize = keySerializer.valueArraySize(keys);
             return !isLastKeyDouble() && keySize == 2-intLeftEdge()-intRightEdge();
         }
 
         @Nullable
-        public <K> K highKey(Serializer<K> keySerializer) {
+        public <K> K highKey(GroupSerializer<K,Object> keySerializer) {
             int keysLen = keySerializer.valueArraySize(keys);
             return keySerializer.valueArrayGet(keys, keysLen-1);
         }
@@ -118,10 +119,10 @@ public class BTreeMapJava {
 
     static class NodeSerializer implements Serializer<Node>{
 
-        final Serializer keySerializer;
-        final Serializer valueSerializer;
+        final GroupSerializer keySerializer;
+        final GroupSerializer valueSerializer;
 
-        NodeSerializer(Serializer keySerializer, Serializer valueSerializer) {
+        NodeSerializer(GroupSerializer keySerializer, GroupSerializer valueSerializer) {
             this.keySerializer = keySerializer;
             this.valueSerializer = valueSerializer;
         }
@@ -190,7 +191,7 @@ public class BTreeMapJava {
 
 
 
-    static long findChild(Serializer keySerializer, Node node, Comparator comparator, Object key){
+    static long findChild(GroupSerializer keySerializer, Node node, Comparator comparator, Object key){
         if(CC.ASSERT && !node.isDir())
             throw new AssertionError();
         //find an index
@@ -220,12 +221,12 @@ public class BTreeMapJava {
         }
     };
 
-    static Object leafGet(Node node, Comparator comparator, Object key, Serializer keySerializer, Serializer valueSerializer){
+    static Object leafGet(Node node, Comparator comparator, Object key, GroupSerializer keySerializer, GroupSerializer valueSerializer){
         int pos = keySerializer.valueArraySearch(node.keys, key, comparator);
         return leafGet(node, pos, keySerializer, valueSerializer);
     }
 
-    static Object leafGet(Node node, int pos, Serializer keySerializer, Serializer valueSerializer){
+    static Object leafGet(Node node, int pos, GroupSerializer keySerializer, GroupSerializer valueSerializer){
 
         if(pos<0+1-node.intLeftEdge()) {
             if(!node.isRightEdge() && pos<-keySerializer.valueArraySize(node.keys))
@@ -268,16 +269,16 @@ public class BTreeMapJava {
     }
 
     public static class BinaryGet<K, V> implements StoreBinaryGetLong {
-        final Serializer<K> keySerializer;
-        final Serializer<V> valueSerializer;
+        final GroupSerializer<K,Object> keySerializer;
+        final GroupSerializer<V,Object> valueSerializer;
         final Comparator<K> comparator;
         final K key;
 
         V value = null;
 
         public BinaryGet(
-                @NotNull Serializer<K> keySerializer,
-                @NotNull Serializer<V> valueSerializer,
+                @NotNull GroupSerializer<K,Object> keySerializer,
+                @NotNull GroupSerializer<V,Object> valueSerializer,
                 @NotNull Comparator<K> comparator,
                 @NotNull K key
                 ) {

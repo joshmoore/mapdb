@@ -21,14 +21,14 @@ public class SerializerIntegerPacked extends SerializerInteger {
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
-        for (int o : (int[]) vals) {
+    public void valueArraySerialize(DataOutput2 out, int[] vals) throws IOException {
+        for (int o : vals) {
             out.packIntBigger(o);
         }
     }
 
     @Override
-    public Object valueArrayDeserialize(DataInput2 in, int size) throws IOException {
+    public int[] valueArrayDeserialize(DataInput2 in, int size) throws IOException {
         int[] ret = new int[size];
         in.unpackIntArray(ret, 0, size);
         return ret;

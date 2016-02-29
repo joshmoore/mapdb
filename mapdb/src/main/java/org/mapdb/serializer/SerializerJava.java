@@ -12,7 +12,7 @@ import java.io.OutputStream;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerJava implements Serializer {
+public class SerializerJava extends GroupSerializerObjectArray {
     @Override
     public void serialize(DataOutput2 out, Object value) throws IOException {
         ObjectOutputStream out2 = new ObjectOutputStream((OutputStream) out);

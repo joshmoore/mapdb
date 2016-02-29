@@ -33,9 +33,10 @@ public class SerializerDate extends SerializerEightByte<Date> {
     }
 
     @Override
-    final public int valueArraySearch(Object keys, Date key) {
-        long time = ((Date) key).getTime();
-        return Arrays.binarySearch((long[]) keys, time);
+    final public int valueArraySearch(long[] keys, Date key) {
+        //TODO valueArraySearch versus comparator test
+        long time = key.getTime();
+        return Arrays.binarySearch(keys, time);
     }
 
 

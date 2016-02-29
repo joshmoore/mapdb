@@ -10,7 +10,7 @@ import java.util.Arrays;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerFloatArray implements Serializer<float[]> {
+public class SerializerFloatArray extends GroupSerializerObjectArray<float[]> {
     @Override
     public void serialize(DataOutput2 out, float[] value) throws IOException {
         out.packInt(value.length);
