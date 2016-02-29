@@ -464,11 +464,11 @@ public final class DataIO {
         return ret;
     }
 
-    static final long PRIME64_1 = -7046029288634856825L; //11400714785074694791
-    static final long PRIME64_2 = -4417276706812531889L; //14029467366897019727
-    static final long PRIME64_3 = 1609587929392839161L;
-    static final long PRIME64_4 = -8796714831421723037L; //9650029242287828579
-    static final long PRIME64_5 = 2870177450012600261L;
+    public static final long PRIME64_1 = -7046029288634856825L; //11400714785074694791
+    public static final long PRIME64_2 = -4417276706812531889L; //14029467366897019727
+    public static final long PRIME64_3 = 1609587929392839161L;
+    public static final long PRIME64_4 = -8796714831421723037L; //9650029242287828579
+    public static final long PRIME64_5 = 2870177450012600261L;
 
     /**
      * <p>

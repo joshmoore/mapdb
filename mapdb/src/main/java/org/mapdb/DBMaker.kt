@@ -1,5 +1,9 @@
 package org.mapdb
 
+import org.mapdb.volume.MappedFileVol
+import org.mapdb.volume.Volume
+import org.mapdb.volume.VolumeFactory
+
 /**
  * Initializes DB object
  */
@@ -64,7 +68,7 @@ object DBMaker{
 
     class Maker(
             private val storeType:StoreType,
-            private val volume:Volume?=null,
+            private val volume: Volume?=null,
             private val volumeExist:Boolean?=null,
             private val file:String?=null){
 
@@ -83,12 +87,12 @@ object DBMaker{
                             if(volume==null){
                                 if(file==null) CC.DEFAULT_MEMORY_VOLUME_FACTORY else CC.DEFAULT_FILE_VOLUME_FACTORY
                             }else {
-                                Volume.VolumeFactory.wrap(volume, volumeExist!!)
+                                VolumeFactory.wrap(volume, volumeExist!!)
                             }
                     StoreDirect.make(volumeFactory=volumeFactory, allocateStartSize=_allocateStartSize)
                 }
                 StoreType.ondisk -> {
-                    val volumeFactory = Volume.MappedFileVol.FACTORY
+                    val volumeFactory = MappedFileVol.FACTORY
                     StoreDirect.make(file=file, volumeFactory=volumeFactory, allocateStartSize=_allocateStartSize)
                 }
             }

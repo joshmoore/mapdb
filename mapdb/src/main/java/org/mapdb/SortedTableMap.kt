@@ -1,5 +1,6 @@
 package org.mapdb
 
+import org.mapdb.volume.Volume
 import java.util.*
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.ConcurrentNavigableMap
@@ -13,7 +14,7 @@ class SortedTableMap<K,V>(
         override val keySerializer : Serializer<K>,
         override val valueSerializer : Serializer<V>,
         val pageSize:Int,
-        internal val volume:Volume,
+        internal val volume: Volume,
         override val hasValues: Boolean = false
 ): ConcurrentMap<K, V>, ConcurrentNavigableMap<K, V>, ConcurrentNavigableMapExtra<K,V> {
 
@@ -69,7 +70,7 @@ class SortedTableMap<K,V>(
 
 
         @JvmStatic fun <K,V> create(
-                volume:Volume,
+                volume: Volume,
                 keySerializer:Serializer<K>,
                 valueSerializer:Serializer<V>
             ):Maker<K,V> {
@@ -82,7 +83,7 @@ class SortedTableMap<K,V>(
 
 
         @JvmStatic fun <K,V> open(
-                volume:Volume,
+                volume: Volume,
                 keySerializer:Serializer<K>,
                 valueSerializer:Serializer<V>
         ):SortedTableMap<K,V> {

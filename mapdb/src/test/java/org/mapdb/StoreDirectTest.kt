@@ -8,6 +8,8 @@ import org.junit.Assert.*
 import java.io.File
 import org.mapdb.StoreDirectJava.*
 import org.mapdb.DataIO.*
+import org.mapdb.volume.Volume
+import org.mapdb.volume.VolumeFactory
 import java.util.*
 
 class StoreDirectTest:StoreReopenTest(){
@@ -146,7 +148,7 @@ class StoreDirectTest:StoreReopenTest(){
         s.commit()
 
         //open new engine over the same volune, check it has the same index pages
-        val s2 = StoreDirect.make(volumeFactory = Volume.VolumeFactory.wrap(s.volume,true))
+        val s2 = StoreDirect.make(volumeFactory = VolumeFactory.wrap(s.volume,true))
         assertEquals(c, s2.indexPages)
     }
 

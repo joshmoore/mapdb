@@ -1,6 +1,8 @@
 package org.mapdb;
 
-import org.jetbrains.annotations.NotNull;
+import org.mapdb.volume.ByteArrayVol;
+import org.mapdb.volume.RandomAccessFileVol;
+import org.mapdb.volume.VolumeFactory;
 
 /**
  * Compilation Configuration. Uses dead code elimination to remove `if(CONSTANT){code}` blocks
@@ -27,8 +29,8 @@ public interface CC{
      */
     long VOLUME_PRINT_STACK_AT_OFFSET = 0;
 
-    Volume.VolumeFactory DEFAULT_MEMORY_VOLUME_FACTORY = Volume.ByteArrayVol.FACTORY;
-    Volume.VolumeFactory DEFAULT_FILE_VOLUME_FACTORY = Volume.RandomAccessFileVol.FACTORY;
+    VolumeFactory DEFAULT_MEMORY_VOLUME_FACTORY = ByteArrayVol.FACTORY;
+    VolumeFactory DEFAULT_FILE_VOLUME_FACTORY = RandomAccessFileVol.FACTORY;
 
     int BTREEMAP_MAX_NODE_SIZE = 32;
 

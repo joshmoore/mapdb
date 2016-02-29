@@ -3,7 +3,8 @@ package doc;
 import org.junit.Test;
 import org.mapdb.Serializer;
 import org.mapdb.SortedTableMap;
-import org.mapdb.Volume;
+import org.mapdb.volume.MappedFileVol;
+import org.mapdb.volume.Volume;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,7 +23,7 @@ public class sortedtablemap_reopen {
         String file = file0.getPath();
         {
             //create memory mapped file
-            Volume volume = Volume.MappedFileVol.FACTORY.makeVolume(file, false);
+            Volume volume = MappedFileVol.FACTORY.makeVolume(file, false);
 
             //open consumer which will feed map with content
             SortedTableMap.Consumer<Integer, String> consumer =
@@ -48,7 +49,7 @@ public class sortedtablemap_reopen {
 
         //a
         //open existing  memory-mapped file in read-only mode
-        Volume volume = Volume.MappedFileVol.FACTORY.makeVolume(file, true);
+        Volume volume = MappedFileVol.FACTORY.makeVolume(file, true);
                                                                  //read-only=true
 
         SortedTableMap<Integer,String> map =

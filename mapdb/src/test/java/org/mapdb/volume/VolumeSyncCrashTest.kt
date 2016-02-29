@@ -1,4 +1,4 @@
-package org.mapdb
+package org.mapdb.volume
 
 import org.junit.Ignore
 import org.junit.Test
@@ -7,15 +7,16 @@ import org.junit.runners.Parameterized
 import java.io.File
 import java.util.*
 import org.junit.Assert.*
+import org.mapdb.volume.*
 
 /**
  * Checks if [Volume.sync()] really flushes disk cache, it should survive JVM crash...
  */
-abstract class VolumeSyncCrashTest(val volfab:Volume.VolumeFactory) :CrashJVM(){
+abstract class VolumeSyncCrashTest(val volfab: VolumeFactory) : org.mapdb.CrashJVM(){
 
-    class RAF       :VolumeSyncCrashTest(Volume.RandomAccessFileVol.FACTORY)
-    class FileChan  :VolumeSyncCrashTest(Volume.FileChannelVol.FACTORY)
-    class MMAP      :VolumeSyncCrashTest(Volume.MappedFileVol.FACTORY)
+    class RAF       : VolumeSyncCrashTest(RandomAccessFileVol.FACTORY)
+    class FileChan  : VolumeSyncCrashTest(FileChannelVol.FACTORY)
+    class MMAP      : VolumeSyncCrashTest(MappedFileVol.FACTORY)
 
     val fileSize = 4 * 1024*1024
     val writeValues = 100;
@@ -69,8 +70,8 @@ abstract class VolumeSyncCrashTest(val volfab:Volume.VolumeFactory) :CrashJVM(){
         return endSeed+10
     }
 
-    @Test @Ignore //TODO crash tests
+    @org.junit.Test @org.junit.Ignore //TODO crash tests
     fun run(){
-        CrashJVM.run(this, time = TT.testRuntime(10))
+        org.mapdb.CrashJVM.Companion.run(this, time = org.mapdb.TT.testRuntime(10))
     }
 }

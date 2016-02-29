@@ -2,6 +2,8 @@ package doc;
 
 import org.junit.Test;
 import org.mapdb.*;
+import org.mapdb.volume.MappedFileVol;
+import org.mapdb.volume.Volume;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,7 +19,7 @@ public class sortedtablemap_init {
         String file = file0.getPath();
         //a
         //create memory mapped volume
-        Volume volume = Volume.MappedFileVol.FACTORY.makeVolume(file, false);
+        Volume volume = MappedFileVol.FACTORY.makeVolume(file, false);
 
         //open consumer which will feed map with content
         SortedTableMap.Consumer<Integer,String> consumer =

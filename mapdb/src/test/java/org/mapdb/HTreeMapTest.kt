@@ -1,6 +1,8 @@
 package org.mapdb
 
 import org.junit.Test
+import org.mapdb.volume.SingleByteArrayVol
+import org.mapdb.volume.Volume
 import java.io.Closeable
 import java.io.Serializable
 import java.util.*
@@ -336,7 +338,7 @@ class HTreeMapTest{
 
     @Test fun continous_expiration(){
         val size = 128 * 1024*1024
-        val volume = Volume.SingleByteArrayVol(size)
+        val volume = SingleByteArrayVol(size)
         val db = DBMaker.onVolume(volume, false).make()
         val map = db
             .hashMap("map", Serializer.LONG, Serializer.BYTE_ARRAY)

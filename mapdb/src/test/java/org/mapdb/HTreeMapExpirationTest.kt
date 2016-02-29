@@ -2,6 +2,8 @@ package org.mapdb
 
 import org.junit.Test
 import org.junit.Assert.*
+import org.mapdb.volume.SingleByteArrayVol
+import org.mapdb.volume.Volume
 import java.util.*
 
 class HTreeMapExpirationTest {
@@ -227,7 +229,7 @@ class HTreeMapExpirationTest {
         if(TT.shortTest())
             return
 
-        val volume = Volume.SingleByteArrayVol(1024*1024*500)
+        val volume = SingleByteArrayVol(1024 * 1024 * 500)
 
         val db = DBMaker
                 .onVolume(volume,false)

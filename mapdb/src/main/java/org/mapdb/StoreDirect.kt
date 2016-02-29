@@ -3,6 +3,8 @@ package org.mapdb
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList
 import org.mapdb.StoreDirectJava.*
 import org.mapdb.DataIO.*
+import org.mapdb.volume.Volume
+import org.mapdb.volume.VolumeFactory
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.atomic.AtomicLong
@@ -14,7 +16,7 @@ import java.util.concurrent.locks.ReadWriteLock
  */
 class StoreDirect(
         val file:String?,
-        val volumeFactory:Volume.VolumeFactory,
+        val volumeFactory: VolumeFactory,
         val readOnly:Boolean,
         override val isThreadSafe:Boolean,
         val concShift:Int,
@@ -25,12 +27,12 @@ class StoreDirect(
 
     companion object{
         fun make(
-            file:String?= null,
-            volumeFactory: Volume.VolumeFactory  = if(file==null) CC.DEFAULT_MEMORY_VOLUME_FACTORY else CC.DEFAULT_FILE_VOLUME_FACTORY,
-            readOnly:Boolean = false,
-            isThreadSafe:Boolean = true,
-            concShift:Int = 4,
-            allocateStartSize: Long = 0L
+                file:String?= null,
+                volumeFactory: VolumeFactory = if(file==null) CC.DEFAULT_MEMORY_VOLUME_FACTORY else CC.DEFAULT_FILE_VOLUME_FACTORY,
+                readOnly:Boolean = false,
+                isThreadSafe:Boolean = true,
+                concShift:Int = 4,
+                allocateStartSize: Long = 0L
         ) = StoreDirect(
             file = file,
             volumeFactory = volumeFactory,

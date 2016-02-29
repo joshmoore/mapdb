@@ -1,4 +1,4 @@
-package org.mapdb
+package org.mapdb.volume
 
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -10,46 +10,52 @@ import java.util.Arrays
 import java.util.Random
 
 import org.junit.Assert.*
+import org.mapdb.CC
+import org.mapdb.DBException
+import org.mapdb.DataIO
+import org.mapdb.Serializer
+import org.mapdb.volume.*
 import java.io.*
+import java.lang.Byte
 import java.nio.file.Files
 
 class VolumeTest {
 
     companion object {
 
-        internal val scale = TT.testScale()
-        internal val sub = Math.pow(10.0, (2.0 + 4*scale)).toLong()
+        internal val scale = org.mapdb.TT.testScale()
+        internal val sub = Math.pow(10.0, (2.0 + 4* scale)).toLong()
 
-        internal val BYTE_ARRAY_FAB:Function1<String,Volume> = {file ->  Volume.ByteArrayVol(CC.PAGE_SHIFT, 0L)}
+        internal val BYTE_ARRAY_FAB:Function1<String, Volume> = { file -> ByteArrayVol(CC.PAGE_SHIFT, 0L) }
 
-        internal val MEMORY_VOL_FAB:Function1<String,Volume> = {file ->  Volume.MemoryVol(false, CC.PAGE_SHIFT, false, 0L)}
+        internal val MEMORY_VOL_FAB:Function1<String, Volume> = { file -> Volume.MemoryVol(false, CC.PAGE_SHIFT, false, 0L) }
 
-        val VOL_FABS: Array<Function1<String,Volume>> =
-                if(TT.shortTest())
-                    arrayOf(BYTE_ARRAY_FAB,MEMORY_VOL_FAB)
+        val VOL_FABS: Array<Function1<String, Volume>> =
+                if(org.mapdb.TT.shortTest())
+                    arrayOf(BYTE_ARRAY_FAB, MEMORY_VOL_FAB)
                 else
                     arrayOf(
-                        BYTE_ARRAY_FAB,
-                        MEMORY_VOL_FAB,
-                        {file ->  Volume.SingleByteArrayVol(4e7.toInt())},
-                        {file ->  Volume.MemoryVol(true, CC.PAGE_SHIFT, false, 0L)},
+                            BYTE_ARRAY_FAB,
+                            MEMORY_VOL_FAB,
+                        {file -> SingleByteArrayVol(4e7.toInt()) },
+                        {file -> Volume.MemoryVol(true, CC.PAGE_SHIFT, false, 0L) },
                         {file ->  Volume.UNSAFE_VOL_FACTORY.makeVolume(null, false, false, CC.PAGE_SHIFT, 0, false)},
-                        {file ->  Volume.FileChannelVol(File(file), false, false, CC.PAGE_SHIFT, 0L)},
-                        {file ->  Volume.RandomAccessFileVol(File(file), false, false, 0L)},
-                        {file ->  Volume.MappedFileVol(File(file), false, false, CC.PAGE_SHIFT, false, 0L, false)},
-                        {file ->  Volume.MappedFileVolSingle(File(file), false, false, 4e7.toLong(), false)},
-                        {file ->  Volume.MemoryVolSingle(false, 4e7.toLong(), false)}
+                        {file -> FileChannelVol(File(file), false, false, CC.PAGE_SHIFT, 0L) },
+                        {file -> RandomAccessFileVol(File(file), false, false, 0L) },
+                        {file -> MappedFileVol(File(file), false, false, CC.PAGE_SHIFT, false, 0L, false) },
+                        {file -> MappedFileVolSingle(File(file), false, false, 4e7.toLong(), false) },
+                        {file -> Volume.MemoryVolSingle(false, 4e7.toLong(), false) }
                     )
     }
 
 
-    @RunWith(Parameterized::class)
-    class IndividualTest(val fab: Function1<String,Volume>) {
+    @org.junit.runner.RunWith(org.junit.runners.Parameterized::class)
+    class IndividualTest(val fab: Function1<String, Volume>) {
 
 
         companion object {
 
-            @Parameterized.Parameters
+            @org.junit.runners.Parameterized.Parameters
             @Throws(IOException::class)
             @JvmStatic
             fun params(): Iterable<Any> {
@@ -62,10 +68,10 @@ class VolumeTest {
             }
         }
 
-        @Test
+        @org.junit.Test
         @Throws(Exception::class)
         fun testPackLong() {
-            val v = fab(TT.tempFile().toString())
+            val v = fab(org.mapdb.TT.tempFile().toString())
 
             v.ensureAvailable(10000)
 
@@ -82,10 +88,10 @@ class VolumeTest {
         }
 
 
-        @Test
+        @org.junit.Test
         @Throws(Throwable::class)
         fun overlap() {
-            val v = fab(TT.tempFile().toString())
+            val v = fab(org.mapdb.TT.tempFile().toString())
 
             putGetOverlap(v, 100, 1000)
             putGetOverlap(v, CC.PAGE_SIZE - 500, 1000)
@@ -96,10 +102,10 @@ class VolumeTest {
 
         }
 
-        @Test fun hash() {
+        @org.junit.Test fun hash() {
             val b = ByteArray(11111)
             Random().nextBytes(b)
-            val v = fab(TT.tempFile().toString())
+            val v = fab(org.mapdb.TT.tempFile().toString())
             v.ensureAvailable(b.size.toLong())
             v.putData(0, b, 0, b.size)
 
@@ -108,10 +114,10 @@ class VolumeTest {
             v.close()
         }
 
-        @Test fun clear() {
+        @org.junit.Test fun clear() {
             val offset = 7339936L
             val size = 96
-            val v = fab(TT.tempFile().toString())
+            val v = fab(org.mapdb.TT.tempFile().toString())
             v.ensureAvailable(offset + 10000)
             for (o in 0..offset + 10000 - 1) {
                 v.putUnsignedByte(o, 11)
@@ -129,7 +135,7 @@ class VolumeTest {
 
         @Throws(IOException::class)
         internal fun putGetOverlap(vol: Volume, offset: Long, size: Int) {
-            val b = TT.randomByteArray(size)
+            val b = org.mapdb.TT.randomByteArray(size)
 
             vol.ensureAvailable(offset + size)
             vol.putDataOverlap(offset, b, 0, b.size)
@@ -147,7 +153,7 @@ class VolumeTest {
             val offset = (2e6+2000).toLong()
             vol.ensureAvailable(offset + size)
 
-            val b = TT.randomByteArray(size)
+            val b = org.mapdb.TT.randomByteArray(size)
 
             val b2 = ByteArray(size + 2000)
 
@@ -167,13 +173,13 @@ class VolumeTest {
     }
 
 
-    @RunWith(Parameterized::class)
-    class DoubleTest(internal val fab1: Function1<String,Volume>,
-                     internal val fab2: Function1<String,Volume>) {
+    @org.junit.runner.RunWith(org.junit.runners.Parameterized::class)
+    class DoubleTest(internal val fab1: Function1<String, Volume>,
+                     internal val fab2: Function1<String, Volume>) {
 
         companion object {
 
-            @Parameterized.Parameters
+            @org.junit.runners.Parameterized.Parameters
             @Throws(IOException::class)
             @JvmStatic
             fun params(): Iterable<Any>? {
@@ -188,10 +194,10 @@ class VolumeTest {
             }
         }
 
-        @Test
+        @org.junit.Test
         fun unsignedShort_compatible() {
-            val v1 = fab1(TT.tempFile().toString())
-            val v2 = fab2(TT.tempFile().toString())
+            val v1 = fab1(org.mapdb.TT.tempFile().toString())
+            val v2 = fab2(org.mapdb.TT.tempFile().toString())
 
             v1.ensureAvailable(16)
             v2.ensureAvailable(16)
@@ -209,10 +215,10 @@ class VolumeTest {
         }
 
 
-        @Test
+        @org.junit.Test
         fun unsignedByte_compatible() {
-            val v1 = fab1(TT.tempFile().toString())
-            val v2 = fab2(TT.tempFile().toString())
+            val v1 = fab1(org.mapdb.TT.tempFile().toString())
+            val v2 = fab2(org.mapdb.TT.tempFile().toString())
 
             v1.ensureAvailable(16)
             v2.ensureAvailable(16)
@@ -230,10 +236,10 @@ class VolumeTest {
         }
 
 
-        @Test
+        @org.junit.Test
         fun long_compatible() {
-            val v1 = fab1(TT.tempFile().toString())
-            val v2 = fab2(TT.tempFile().toString())
+            val v1 = fab1(org.mapdb.TT.tempFile().toString())
+            val v2 = fab2(org.mapdb.TT.tempFile().toString())
 
             v1.ensureAvailable(16)
             v2.ensureAvailable(16)
@@ -251,10 +257,10 @@ class VolumeTest {
         }
 
 
-        @Test
+        @org.junit.Test
         fun long_pack() {
-            val v1 = fab1(TT.tempFile().toString())
-            val v2 = fab2(TT.tempFile().toString())
+            val v1 = fab1(org.mapdb.TT.tempFile().toString())
+            val v2 = fab2(org.mapdb.TT.tempFile().toString())
 
             v1.ensureAvailable(21)
             v2.ensureAvailable(20)
@@ -275,10 +281,10 @@ class VolumeTest {
         }
 
 
-        @Test
+        @org.junit.Test
         fun long_six_compatible() {
-            val v1 = fab1(TT.tempFile().toString())
-            val v2 = fab2(TT.tempFile().toString())
+            val v1 = fab1(org.mapdb.TT.tempFile().toString())
+            val v2 = fab2(org.mapdb.TT.tempFile().toString())
 
             v1.ensureAvailable(16)
             v2.ensureAvailable(16)
@@ -297,10 +303,10 @@ class VolumeTest {
             v2.close()
         }
 
-        @Test
+        @org.junit.Test
         fun int_compatible() {
-            val v1 = fab1(TT.tempFile().toString())
-            val v2 = fab2(TT.tempFile().toString())
+            val v1 = fab1(org.mapdb.TT.tempFile().toString())
+            val v2 = fab2(org.mapdb.TT.tempFile().toString())
 
             v1.ensureAvailable(16)
             v2.ensureAvailable(16)
@@ -318,10 +324,10 @@ class VolumeTest {
         }
 
 
-        @Test
+        @org.junit.Test
         fun byte_compatible() {
-            val v1 = fab1(TT.tempFile().toString())
-            val v2 = fab2(TT.tempFile().toString())
+            val v1 = fab1(org.mapdb.TT.tempFile().toString())
+            val v2 = fab2(org.mapdb.TT.tempFile().toString())
 
             v1.ensureAvailable(16)
             v2.ensureAvailable(16)
@@ -351,8 +357,8 @@ class VolumeTest {
     }
 
 
-    @Test fun direct_bb_overallocate() {
-        if (TT.shortTest())
+    @org.junit.Test fun direct_bb_overallocate() {
+        if (org.mapdb.TT.shortTest())
             return
 
         val vol = Volume.MemoryVol(true, CC.PAGE_SHIFT, false, 0L)
@@ -365,11 +371,11 @@ class VolumeTest {
         vol.close()
     }
 
-    @Test fun byte_overallocate() {
-        if (TT.shortTest())
+    @org.junit.Test fun byte_overallocate() {
+        if (org.mapdb.TT.shortTest())
             return
 
-        val vol = Volume.ByteArrayVol(CC.PAGE_SHIFT, 0L)
+        val vol = ByteArrayVol(CC.PAGE_SHIFT, 0L)
         try {
             vol.ensureAvailable(1e10.toLong())
         } catch (e: DBException.OutOfMemory) {
@@ -379,7 +385,7 @@ class VolumeTest {
         vol.close()
     }
 
-    @Test
+    @org.junit.Test
     @Throws(IOException::class)
     fun mmap_init_size() {
         //test if mmaping file size repeatably increases file
@@ -395,14 +401,14 @@ class VolumeTest {
         raf.close()
 
         //open mmap file, size should grow to multiple of chunk size
-        var m = Volume.MappedFileVol(f, false, false, CC.PAGE_SHIFT, true, 0L, false)
+        var m = MappedFileVol(f, false, false, CC.PAGE_SHIFT, true, 0L, false)
         assertEquals(1, m.slices.size.toLong())
         m.sync()
         m.close()
         assertEquals(chunkSize, f.length())
 
         //open mmap file, size should grow to multiple of chunk size
-        m = Volume.MappedFileVol(f, false, false, CC.PAGE_SHIFT, true, 0L, false)
+        m = MappedFileVol(f, false, false, CC.PAGE_SHIFT, true, 0L, false)
         assertEquals(1, m.slices.size.toLong())
         m.ensureAvailable(add + 4)
         assertEquals(11, m.getInt(add).toLong())
@@ -415,7 +421,7 @@ class VolumeTest {
         raf.writeInt(11)
         raf.close()
 
-        m = Volume.MappedFileVol(f, false, false, CC.PAGE_SHIFT, true, 0L, false)
+        m = MappedFileVol(f, false, false, CC.PAGE_SHIFT, true, 0L, false)
         assertEquals(2, m.slices.size.toLong())
         m.sync()
         m.ensureAvailable(chunkSize + add + 4)
@@ -425,7 +431,7 @@ class VolumeTest {
         m.close()
         assertEquals(chunkSize * 2, f.length())
 
-        m = Volume.MappedFileVol(f, false, false, CC.PAGE_SHIFT, true, 0L, false)
+        m = MappedFileVol(f, false, false, CC.PAGE_SHIFT, true, 0L, false)
         m.sync()
         assertEquals(chunkSize * 2, f.length())
         m.ensureAvailable(chunkSize + add + 4)
@@ -444,7 +450,7 @@ class VolumeTest {
         f.delete()
     }
 
-    @Test @Throws(IOException::class)
+    @org.junit.Test @Throws(IOException::class)
     fun small_mmap_file_single() {
         val f = File.createTempFile("mapdbTest", "mapdb")
         val raf = RandomAccessFile(f, "rw")
@@ -453,14 +459,14 @@ class VolumeTest {
         raf.close()
         assertEquals(len.toLong(), f.length())
 
-        val v = Volume.MappedFileVol.FACTORY.makeVolume(f.path, true)
+        val v = MappedFileVol.FACTORY.makeVolume(f.path, true)
 
-        assertTrue(v is Volume.MappedFileVolSingle)
-        val b = (v as Volume.MappedFileVolSingle).buffer
+        assertTrue(v is MappedFileVolSingle)
+        val b = (v as MappedFileVolSingle).buffer
         assertEquals(len.toLong(), b.limit().toLong())
     }
 
-    @Test @Throws(IOException::class)
+    @org.junit.Test @Throws(IOException::class)
     fun single_mmap_grow() {
         val f = File.createTempFile("mapdbTest", "mapdb")
         val raf = RandomAccessFile(f, "rw")
@@ -469,17 +475,17 @@ class VolumeTest {
         raf.close()
         assertEquals(8, f.length())
 
-        val v = Volume.MappedFileVolSingle(f, false, false, 1000, false)
+        val v = MappedFileVolSingle(f, false, false, 1000, false)
         assertEquals(1000, f.length())
         assertEquals(112314123, v.getLong(0))
         v.close()
     }
 
-    @Test
+    @org.junit.Test
     @Throws(IOException::class)
     fun lock_double_open() {
         val f = File.createTempFile("mapdbTest", "mapdb")
-        val v = Volume.RandomAccessFileVol(f, false, false, 0L)
+        val v = RandomAccessFileVol(f, false, false, 0L)
         v.ensureAvailable(8)
         v.putLong(0, 111L)
 
@@ -487,39 +493,39 @@ class VolumeTest {
         assertTrue(v.fileLocked)
 
         try {
-            val v2 = Volume.RandomAccessFileVol(f, false, false, 0L)
+            val v2 = RandomAccessFileVol(f, false, false, 0L)
             fail()
         } catch (l: DBException.FileLocked) {
             //ignored
         }
 
         v.close()
-        val v2 = Volume.RandomAccessFileVol(f, false, false, 0L)
+        val v2 = RandomAccessFileVol(f, false, false, 0L)
 
         assertEquals(111L, v2.getLong(0))
     }
 
-    @Test fun initsize() {
-        if (TT.shortTest())
+    @org.junit.Test fun initsize() {
+        if (org.mapdb.TT.shortTest())
             return
 
         val factories = arrayOf(
                 CC.DEFAULT_FILE_VOLUME_FACTORY,
                 CC.DEFAULT_MEMORY_VOLUME_FACTORY,
-                Volume.ByteArrayVol.FACTORY,
-                Volume.FileChannelVol.FACTORY,
-                Volume.MappedFileVol.FACTORY,
-                Volume.MappedFileVol.FACTORY,
+                ByteArrayVol.FACTORY,
+                FileChannelVol.FACTORY,
+                MappedFileVol.FACTORY,
+                MappedFileVol.FACTORY,
                 Volume.MemoryVol.FACTORY,
                 Volume.MemoryVol.FACTORY_WITH_CLEANER_HACK,
-                Volume.RandomAccessFileVol.FACTORY,
-                Volume.SingleByteArrayVol.FACTORY,
-                Volume.MappedFileVolSingle.FACTORY,
-                Volume.MappedFileVolSingle.FACTORY_WITH_CLEANER_HACK,
+                RandomAccessFileVol.FACTORY,
+                SingleByteArrayVol.FACTORY,
+                MappedFileVolSingle.FACTORY,
+                MappedFileVolSingle.FACTORY_WITH_CLEANER_HACK,
                 Volume.UNSAFE_VOL_FACTORY)
 
         for (fac in factories) {
-            val f = TT.tempFile()
+            val f = org.mapdb.TT.tempFile()
             val initSize = 20 * 1024 * 1024.toLong()
             val vol = fac.makeVolume(f.toString(), false, true, CC.PAGE_SHIFT, initSize, false)
             assertEquals(vol.javaClass.name, initSize, vol.length())
@@ -528,14 +534,14 @@ class VolumeTest {
         }
     }
 
-    @Test fun hash() {
+    @org.junit.Test fun hash() {
         val r = Random()
         for (i in 0..99) {
             val len = 100 + r.nextInt(1999)
             val b = ByteArray(len)
             r.nextBytes(b)
 
-            val vol = Volume.SingleByteArrayVol(len)
+            val vol = SingleByteArrayVol(len)
             vol.putData(0, b, 0, b.size)
 
             assertEquals(
@@ -545,12 +551,12 @@ class VolumeTest {
         }
     }
 
-    @Test fun clearOverlap() {
+    @org.junit.Test fun clearOverlap() {
         //TODO is this test necessary?
-        if (TT.testScale() < 100)
+        if (org.mapdb.TT.testScale() < 100)
             return
 
-        val v = Volume.ByteArrayVol()
+        val v = ByteArrayVol()
         v.ensureAvailable(5 * 1024 * 1024.toLong())
         val vLength = v.length()
         val ones = ByteArray(1024)
@@ -587,7 +593,7 @@ class VolumeTest {
         }
     }
 
-    @Test
+    @org.junit.Test
     fun testClearOverlap2() {
         clearOverlap(0, 1000)
         clearOverlap(0, 10000000)
@@ -598,7 +604,7 @@ class VolumeTest {
     }
 
     internal fun clearOverlap(startPos: Long, size: Long) {
-        val v = Volume.ByteArrayVol()
+        val v = ByteArrayVol()
         v.ensureAvailable(startPos + size + 10000)
         val ones = ByteArray(1024)
         Arrays.fill(ones, 1.toByte())
