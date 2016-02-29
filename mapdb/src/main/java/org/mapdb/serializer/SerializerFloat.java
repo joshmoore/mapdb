@@ -9,7 +9,7 @@ import java.util.Arrays;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerFloat extends FourByteSerializer<Float> {
+public class SerializerFloat extends SerializerFourByte<Float> {
 
     @Override
     protected Float unpack(int l) {

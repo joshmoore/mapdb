@@ -1,13 +1,24 @@
 package org.mapdb.serializer;
 
 import org.mapdb.DataInput2;
+import org.mapdb.DataOutput2;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 
-public abstract class SerializerInteger extends FourByteSerializer<Integer> {
+public class SerializerInteger extends SerializerFourByte<Integer> {
 
+
+    @Override
+    public void serialize(DataOutput2 out, Integer value) throws IOException {
+        out.writeInt(value);
+    }
+
+    @Override
+    public Integer deserialize(DataInput2 in, int available) throws IOException {
+        return new Integer(in.readInt());
+    }
     @Override
     protected Integer unpack(int l) {
         return new Integer(l);

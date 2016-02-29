@@ -10,7 +10,7 @@ import java.util.Comparator;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerStringNoSize extends StringValueSerializer {
+public class SerializerStringNoSize extends StringSerializer {
 
     private final Charset UTF8_CHARSET = Charset.forName("UTF8");
 

@@ -10,7 +10,7 @@ import java.util.Arrays;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerRecid extends EightByteSerializer<Long> {
+public class SerializerRecid extends SerializerEightByte<Long> {
 
     @Override
     public void serialize(DataOutput2 out, Long value) throws IOException {

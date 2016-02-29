@@ -9,7 +9,7 @@ import java.util.Arrays;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerDouble extends EightByteSerializer<Double> {
+public class SerializerDouble extends SerializerEightByte<Double> {
     @Override
     protected Double unpack(long l) {
         return new Double(Double.longBitsToDouble(l));

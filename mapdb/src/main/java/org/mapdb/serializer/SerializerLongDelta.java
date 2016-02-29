@@ -9,7 +9,7 @@ import java.io.IOException;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerLongDelta extends LongSerializer {
+public class SerializerLongDelta extends SerializerLong {
     @Override
     public void serialize(DataOutput2 out, Long value) throws IOException {
         out.packLong(value);

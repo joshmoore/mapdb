@@ -9,12 +9,12 @@ import java.io.IOException;
 /**
  * Created by jan on 2/28/16.
  */
-public class ArrayDeltaSer<T> extends ArraySer<T> {
+public class SerializerArrayDelta<T> extends SerializerArray<T> {
 
     private static final long serialVersionUID = -930920902390439234L;
 
 
-    public ArrayDeltaSer(Serializer<T> serializer) {
+    public SerializerArrayDelta(Serializer<T> serializer) {
         super(serializer);
     }
 

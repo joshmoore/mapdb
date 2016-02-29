@@ -10,7 +10,7 @@ import java.util.Date;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerDate extends EightByteSerializer<Date> {
+public class SerializerDate extends SerializerEightByte<Date> {
 
     @Override
     public void serialize(DataOutput2 out, Date value) throws IOException {

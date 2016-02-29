@@ -532,7 +532,7 @@ class Serializer_DATE:SerializerTest<Date>(){
 class SerializerCompressionWrapperTest():SerializerTest<ByteArray>(){
     override fun randomValue() = TT.randomByteArray(random.nextInt(1000))
 
-    override val serializer = CompressionWrapper(Serializer.BYTE_ARRAY)
+    override val serializer = SerializerCompressionWrapper(Serializer.BYTE_ARRAY)
 
     @Test
     fun compression_wrapper() {
@@ -552,11 +552,11 @@ class SerializerCompressionWrapperTest():SerializerTest<ByteArray>(){
 
 class Serializer_DeflateWrapperTest():SerializerTest<ByteArray>() {
     override fun randomValue() = TT.randomByteArray(random.nextInt(1000))
-    override val serializer = CompressionDeflateWrapper(Serializer.BYTE_ARRAY)
+    override val serializer = SerializerCompressionDeflateWrapper(Serializer.BYTE_ARRAY)
 
 
     @Test fun deflate_wrapper() {
-        val c = CompressionDeflateWrapper(Serializer.BYTE_ARRAY, -1,
+        val c = SerializerCompressionDeflateWrapper(Serializer.BYTE_ARRAY, -1,
                 byteArrayOf(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 23, 4, 5, 6, 7, 8, 9, 65, 2))
 
         val b = byteArrayOf(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 5, 6, 3, 3, 3, 3, 35, 6, 67, 7, 3, 43, 34)
@@ -570,10 +570,10 @@ class Serializer_DeflateWrapperTest():SerializerTest<ByteArray>() {
 open class Serializer_Array(): SerializerTest<Array<Any>>(){
     override fun randomValue() = Array<Any>(random.nextInt(30), {TT.randomString(random.nextInt(30))})
 
-    override val serializer = ArraySer(Serializer.STRING as Serializer<Any>)
+    override val serializer = SerializerArray(Serializer.STRING as Serializer<Any>)
 
     @Test fun array() {
-        val s:Serializer<Array<Any>> = ArraySer(Serializer.INTEGER as Serializer<Any>)
+        val s:Serializer<Array<Any>> = SerializerArray(Serializer.INTEGER as Serializer<Any>)
 
         val a:Array<Any> = arrayOf(1, 2, 3, 4)
 
@@ -587,7 +587,7 @@ class Serializer_DeltaArray():Serializer_Array(){
 
     //TODO more tests with common prefix
 
-    override val serializer = ArrayDeltaSer(Serializer.STRING as Serializer<Any>)
+    override val serializer = SerializerArrayDelta(Serializer.STRING as Serializer<Any>)
 
 
 }

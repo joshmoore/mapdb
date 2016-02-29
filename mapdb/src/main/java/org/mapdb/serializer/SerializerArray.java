@@ -10,12 +10,12 @@ import java.io.Serializable;
 /**
  * Created by jan on 2/28/16.
  */
-public class ArraySer<T> implements Serializer<T[]>, Serializable {
+public class SerializerArray<T> implements Serializer<T[]>, Serializable {
 
     private static final long serialVersionUID = -7443421486382532062L;
     protected final Serializer<T> serializer;
 
-    public ArraySer(Serializer<T> serializer) {
+    public SerializerArray(Serializer<T> serializer) {
         if (serializer == null)
             throw new NullPointerException("null serializer");
         this.serializer = serializer;
@@ -79,7 +79,7 @@ public class ArraySer<T> implements Serializer<T[]>, Serializable {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        return serializer.equals(((org.mapdb.serializer.ArraySer<?>) o).serializer);
+        return serializer.equals(((SerializerArray<?>) o).serializer);
     }
 
     @Override

@@ -11,7 +11,7 @@ import java.util.Comparator;
 /**
  * Created by jan on 2/28/16.
  */
-public abstract class FourByteSerializer<E> implements Serializer<E> {
+public abstract class SerializerFourByte<E> implements Serializer<E> {
 
     protected abstract E unpack(int l);
 

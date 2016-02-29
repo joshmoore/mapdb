@@ -5,7 +5,7 @@ import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.HTreeMap;
 import org.mapdb.Serializer;
-import org.mapdb.serializer.CompressionWrapper;
+import org.mapdb.serializer.SerializerCompressionWrapper;
 
 
 public class htreemap_compressed {
@@ -17,7 +17,7 @@ public class htreemap_compressed {
         //a
         HTreeMap<Long, String> map = db.hashMap("map")
                 .valueSerializer(
-                        new CompressionWrapper(Serializer.STRING))
+                        new SerializerCompressionWrapper(Serializer.STRING))
                 .create();
         //z
         //TODO add Serializer.compressed() method?

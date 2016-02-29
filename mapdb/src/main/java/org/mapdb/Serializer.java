@@ -52,7 +52,7 @@ public interface Serializer<A> extends Comparator<A> {
      * Stores string size so can be used as collection serializer.
      * Does not handle null values
      */
-    Serializer<String> STRING = new StringSerializer2();
+    Serializer<String> STRING = new StringSerializer();
 
 
 
@@ -108,7 +108,7 @@ public interface Serializer<A> extends Comparator<A> {
     /** Serializes Integer into 4 bytes, used mainly for testing.
      * Does not handle null values.*/
 
-    Serializer<Integer> INTEGER = new SerializerInteger2();
+    Serializer<Integer> INTEGER = new SerializerInteger();
 
     /**
      *  Packs positive Integer, so smaller positive values occupy less than 4 bytes.
