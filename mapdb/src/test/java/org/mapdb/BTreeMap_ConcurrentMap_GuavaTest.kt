@@ -3,6 +3,7 @@ package org.mapdb
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import org.mapdb.guavaTests.ConcurrentMapInterfaceTest
+import org.mapdb.serializer.GroupSerializer
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.ConcurrentMap
@@ -53,7 +54,7 @@ class BTreeMap_ConcurrentMap_GuavaTest(
                         }
 
                     if(otherComparator)
-                        keySer = object:Serializer<Int> by keySer{
+                        keySer = object: GroupSerializer<Int,Any> by (keySer as GroupSerializer<Int,Any>){
                             override fun compare(o1: Int?, o2: Int?): Int {
                                 throw AssertionError()
                             }
