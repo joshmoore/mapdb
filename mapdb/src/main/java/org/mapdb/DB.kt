@@ -1,5 +1,7 @@
 package org.mapdb
 
+import com.google.common.cache.Cache
+import com.google.common.cache.CacheBuilder
 import org.eclipse.collections.api.map.primitive.MutableLongLongMap
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList
 import org.mapdb.serializer.GroupSerializer
@@ -20,10 +22,6 @@ open class DB(
         /** True if store existed before and was opened, false if store was created and is completely empty */
         val storeOpened:Boolean
 ): Closeable {
-
-    internal val lock = ReentrantReadWriteLock();
-
-    @Volatile private  var closed = false;
 
     companion object{
         internal val RECID_NAME_CATALOG:Long = 1L
@@ -48,55 +46,54 @@ open class DB(
                 }
             }
         }
-
-        internal val NAME_PATTERN = "^[a-zA-Z0-9_]+$".toPattern()
+        
     }
 
 
     object Keys {
-        val type = ".type"
+        val type = "#type"
 
-        val keySerializer = ".keySerializer"
-        val valueSerializer = ".valueSerializer"
-        val serializer = ".serializer"
+        val keySerializer = "#keySerializer"
+        val valueSerializer = "#valueSerializer"
+        val serializer = "#serializer"
 
-        val valueInline = ".valueInline"
+        val valueInline = "#valueInline"
 
-        val counterRecids = ".counterRecids"
+        val counterRecids = "#counterRecids"
 
-        val hashSeed = ".hashSeed"
-        val segmentRecids = ".segmentRecids"
+        val hashSeed = "#hashSeed"
+        val segmentRecids = "#segmentRecids"
 
-        val expireCreateTTL = ".expireCreateTTL"
-        val expireUpdateTTL = ".expireUpdateTTL"
-        val expireGetTTL = ".expireGetTTL"
+        val expireCreateTTL = "#expireCreateTTL"
+        val expireUpdateTTL = "#expireUpdateTTL"
+        val expireGetTTL = "#expireGetTTL"
 
-        val expireCreateQueues = ".expireCreateQueue"
-        val expireUpdateQueues = ".expireUpdateQueue"
-        val expireGetQueues = ".expireGetQueue"
+        val expireCreateQueues = "#expireCreateQueue"
+        val expireUpdateQueues = "#expireUpdateQueue"
+        val expireGetQueues = "#expireGetQueue"
 
 
-        val rootRecids = ".rootRecids"
-        val rootRecid = ".rootRecid"
+        val rootRecids = "#rootRecids"
+        val rootRecid = "#rootRecid"
         /** concurrency shift, 1<<it is number of concurrent segments in HashMap*/
-        val concShift = ".concShift"
-        val dirShift = ".dirShift"
-        val levels = ".levels"
-        val removeCollapsesIndexTree = ".removeCollapsesIndexTree"
+        val concShift = "#concShift"
+        val dirShift = "#dirShift"
+        val levels = "#levels"
+        val removeCollapsesIndexTree = "#removeCollapsesIndexTree"
 
-        val rootRecidRecid = ".rootRecidRecid"
-        val counterRecid = ".counterRecid"
-        val maxNodeSize = ".maxNodeSize"
+        val rootRecidRecid = "#rootRecidRecid"
+        val counterRecid = "#counterRecid"
+        val maxNodeSize = "#maxNodeSize"
 
-//        val valuesOutsideNodes = ".valuesOutsideNodes"
-//        val numberOfNodeMetas = ".numberOfNodeMetas"
+//        val valuesOutsideNodes = "#valuesOutsideNodes"
+//        val numberOfNodeMetas = "#numberOfNodeMetas"
 //
-//        val headRecid = ".headRecid"
-//        val tailRecid = ".tailRecid"
-//        val useLocks = ".useLocks"
-        val size = ".size"
-        val recid = ".recid"
-//        val headInsertRecid = ".headInsertRecid"
+//        val headRecid = "#headRecid"
+//        val tailRecid = "#tailRecid"
+//        val useLocks = "#useLocks"
+        val size = "#size"
+        val recid = "#recid"
+//        val headInsertRecid = "#headInsertRecid"
     }
 
 
@@ -114,6 +111,14 @@ open class DB(
             }
         }
     }
+
+    internal val lock = ReentrantReadWriteLock();
+
+    @Volatile private  var closed = false;
+
+    /** Already loaded named collections. Values are weakly referenced. We need singletons for locking */
+    protected var namesInstanciated: Cache<String, Any?> = CacheBuilder.newBuilder().concurrencyLevel(1).weakValues().build()
+
 
     private val classSingletonCat = IdentityHashMap<Any,String>()
     private val classSingletonRev = HashMap<String, Any>()
@@ -147,8 +152,9 @@ open class DB(
 
 
     internal fun checkName(name: String) {
-        if (NAME_PATTERN.matcher(name).matches().not())
-            throw DBException.WrongConfiguration("Name contains illegal character. Only letters, numbers and `_` is allowed")
+        //TODO limit characters in name?
+        if(name.contains('#'))
+            throw DBException.WrongConfiguration("Name contains illegal character, '#' is not allowed.")
     }
 
     internal fun  nameCatalogPutClass(
@@ -184,7 +190,7 @@ open class DB(
     fun nameCatalogParamsFor(name: String): Map<String,String> {
         val ret = TreeMap<String,String>()
         ret.putAll(nameCatalogLoad().filter {
-            it.key.startsWith(name+".")
+            it.key.startsWith(name+"#")
         })
         return Collections.unmodifiableMap(ret)
     }
@@ -1014,6 +1020,10 @@ open class DB(
         protected fun make2(create:Boolean?):E{
             Utils.lockWrite(db.lock){
                 verify()
+                val ref = db.namesInstanciated.getIfPresent(name)
+                if(ref!=null)
+                    return ref as E;
+
                 val catalog = db.nameCatalogLoad()
                 //check existence
                 val typeFromDb = catalog[name+Keys.type]
@@ -1028,12 +1038,16 @@ open class DB(
                     throw DBException.WrongConfiguration("Wrong type for named record '$name'. Expected '$type', but catalog has '$typeFromDb'")
                 }
 
-                if(typeFromDb!=null)
-                    return open2(catalog)
+                if(typeFromDb!=null) {
+                    val ret = open2(catalog)
+                    db.namesInstanciated.put(name,ret)
+                    return ret;
+                }
 
                 catalog.put(name+Keys.type,type)
                 val ret = create2(catalog)
                 db.nameCatalogSave(catalog)
+                db.namesInstanciated.put(name,ret)
                 return ret
             }
         }

@@ -74,8 +74,8 @@ class DBTest{
         db.lock.writeLock().lock()
         val nameCatalog = db.nameCatalogLoad()
         assertTrue(2<nameCatalog.size)
-        assertEquals("HashMap",nameCatalog["aa.type"])
-        assertEquals("org.mapdb.Serializer#BIG_DECIMAL", nameCatalog["aa.keySerializer"])
+        assertEquals("HashMap",nameCatalog["aa#type"])
+        assertEquals("org.mapdb.Serializer#BIG_DECIMAL", nameCatalog["aa#keySerializer"])
     }
 
     @Test fun hashMap_Create(){
@@ -338,8 +338,8 @@ class DBTest{
         db.lock.writeLock().lock()
         val nameCatalog = db.nameCatalogLoad()
         assertTrue(2<nameCatalog.size)
-        assertEquals("TreeMap",nameCatalog["aa.type"])
-        assertEquals("org.mapdb.Serializer#BIG_DECIMAL", nameCatalog["aa.keySerializer"])
+        assertEquals("TreeMap",nameCatalog["aa#type"])
+        assertEquals("org.mapdb.Serializer#BIG_DECIMAL", nameCatalog["aa#keySerializer"])
     }
 
     @Test fun treeMap_Create(){
@@ -488,8 +488,8 @@ class DBTest{
         db.lock.writeLock().lock()
         val nameCatalog = db.nameCatalogLoad()
         assertTrue(2<nameCatalog.size)
-        assertEquals("HashSet",nameCatalog["aa.type"])
-        assertEquals(null, nameCatalog["aa.serializer"])
+        assertEquals("HashSet",nameCatalog["aa#type"])
+        assertEquals(null, nameCatalog["aa#serializer"])
     }
 
     @Test fun hashSet_Create(){
@@ -747,9 +747,9 @@ class DBTest{
         db.lock.writeLock().lock()
         val nameCatalog = db.nameCatalogLoad()
         assertTrue(2<nameCatalog.size)
-        assertEquals("TreeSet",nameCatalog["aa.type"])
-        assertEquals(null, nameCatalog["aa.keySerializer"])
-        assertEquals(null, nameCatalog["aa.serializer"])
+        assertEquals("TreeSet",nameCatalog["aa#type"])
+        assertEquals(null, nameCatalog["aa#keySerializer"])
+        assertEquals(null, nameCatalog["aa#serializer"])
     }
 
     @Test fun treeSet_Create(){
@@ -922,6 +922,40 @@ class DBTest{
         f.delete()
     }
 
+
+    @Test fun weakref_test(){
+        fun test(f:(db:DB)->DB.Maker<*>){
+            var db = DBMaker.memoryDB().make()
+            var c = f(db).make()
+            assertTrue(c===f(db).make())
+
+            db = DBMaker.memoryDB().make()
+            c = f(db).make()
+            assertTrue(c===f(db).open())
+
+            db = DBMaker.memoryDB().make()
+            c = f(db).create()
+            assertTrue(c===f(db).open())
+
+            db = DBMaker.memoryDB().make()
+            c = f(db).create()
+            assertTrue(c===f(db).make())
+        }
+
+        test{it.hashMap("aa")}
+        test{it.hashSet("aa")}
+        test{it.treeMap("aa")}
+        test{it.treeSet("aa")}
+
+        test{it.atomicBoolean("aa")}
+        test{it.atomicInteger("aa")}
+        test{it.atomicVar("aa", Serializer.JAVA)}
+        test{it.atomicString("aa")}
+        test{it.atomicLong("aa")}
+
+        test{it.indexTreeList<Any>("aa")}
+        test{it.indexTreeLongLongMap("aa")}
+    }
 
 
 }
