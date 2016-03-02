@@ -107,7 +107,7 @@ public class BTreeMapJava {
         }
 
         @Nullable
-        public <K> K highKey(GroupSerializer<K,Object> keySerializer) {
+        public <K> K highKey(GroupSerializer<K> keySerializer) {
             int keysLen = keySerializer.valueArraySize(keys);
             return keySerializer.valueArrayGet(keys, keysLen-1);
         }
@@ -269,16 +269,16 @@ public class BTreeMapJava {
     }
 
     public static class BinaryGet<K, V> implements StoreBinaryGetLong {
-        final GroupSerializer<K,Object> keySerializer;
-        final GroupSerializer<V,Object> valueSerializer;
+        final GroupSerializer<K> keySerializer;
+        final GroupSerializer<V> valueSerializer;
         final Comparator<K> comparator;
         final K key;
 
         V value = null;
 
         public BinaryGet(
-                @NotNull GroupSerializer<K,Object> keySerializer,
-                @NotNull GroupSerializer<V,Object> valueSerializer,
+                @NotNull GroupSerializer<K> keySerializer,
+                @NotNull GroupSerializer<V> valueSerializer,
                 @NotNull Comparator<K> comparator,
                 @NotNull K key
                 ) {

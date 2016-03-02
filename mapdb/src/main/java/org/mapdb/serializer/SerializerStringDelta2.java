@@ -12,7 +12,7 @@ import java.util.Comparator;
 /**
  * Created by jan on 2/29/16.
  */
-public class SerializerStringDelta2 implements  GroupSerializer<String,SerializerStringDelta2.StringArrayKeys> {
+public class SerializerStringDelta2 implements  GroupSerializer<String> {
 
     public interface StringArrayKeys {
 
@@ -530,7 +530,7 @@ public class SerializerStringDelta2 implements  GroupSerializer<String,Serialize
 
 
     @Override
-    public SerializerStringDelta2.StringArrayKeys valueArrayDeserialize(DataInput2 in2, int size) throws IOException {
+    public StringArrayKeys valueArrayDeserialize(DataInput2 in2, int size) throws IOException {
         //read data sizes
         int[] offsets = new int[size];
         int old=0;
@@ -551,7 +551,7 @@ public class SerializerStringDelta2 implements  GroupSerializer<String,Serialize
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, SerializerStringDelta2.StringArrayKeys vals) throws IOException {
+    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
         StringArrayKeys keys = (StringArrayKeys) vals;
         int offset = 0;
         //write sizes
@@ -569,12 +569,12 @@ public class SerializerStringDelta2 implements  GroupSerializer<String,Serialize
     }
 
     @Override
-    public SerializerStringDelta2.StringArrayKeys valueArrayCopyOfRange(SerializerStringDelta2.StringArrayKeys vals, int from, int to) {
-        return vals.copyOfRange(from,to);
+    public StringArrayKeys valueArrayCopyOfRange(Object vals, int from, int to) {
+        return ((StringArrayKeys)vals).copyOfRange(from,to);
     }
 
     @Override
-    public SerializerStringDelta2.StringArrayKeys valueArrayDeleteValue(SerializerStringDelta2.StringArrayKeys vals, int pos) {
+    public StringArrayKeys valueArrayDeleteValue(Object vals, int pos) {
         //return vals.deleteKey(pos);
         Object[] vv = valueArrayToArray(vals);
         vv = DBUtil.arrayDelete(vv, pos, 1);
@@ -582,12 +582,12 @@ public class SerializerStringDelta2 implements  GroupSerializer<String,Serialize
     }
 
     @Override
-    public SerializerStringDelta2.StringArrayKeys valueArrayEmpty() {
+    public StringArrayKeys valueArrayEmpty() {
         return new ByteArrayKeys(new int[0], new byte[0]);
     }
 
     @Override
-    public SerializerStringDelta2.StringArrayKeys valueArrayFromArray(Object[] keys) {
+    public StringArrayKeys valueArrayFromArray(Object[] keys) {
         if(keys.length==0)
             return valueArrayEmpty();
         //$DELAY$
@@ -614,24 +614,24 @@ public class SerializerStringDelta2 implements  GroupSerializer<String,Serialize
     }
 
     @Override
-    public String valueArrayGet(SerializerStringDelta2.StringArrayKeys vals, int pos) {
-        return vals.getKeyString(pos);
+    public String valueArrayGet(Object vals, int pos) {
+        return ((StringArrayKeys)vals).getKeyString(pos);
     }
 
     @Override
-    public SerializerStringDelta2.StringArrayKeys valueArrayPut(SerializerStringDelta2.StringArrayKeys vals, int pos, String newValue) {
-        return vals.putKey(pos, newValue);
+    public Object valueArrayPut(Object vals, int pos, String newValue) {
+        return ((StringArrayKeys)vals).putKey(pos, newValue);
     }
 
     @Override
-    public int valueArraySearch(SerializerStringDelta2.StringArrayKeys keys, String key) {
+    public int valueArraySearch(Object keys, String key) {
         //TODO PERF optimize search
         Object[] v = valueArrayToArray(keys);
         return Arrays.binarySearch(v, key, (Comparator)this);
     }
 
     @Override
-    public int valueArraySearch(SerializerStringDelta2.StringArrayKeys keys, String key, Comparator comparator) {
+    public int valueArraySearch(Object keys, String key, Comparator comparator) {
         //TODO PERF optimize search
         Object[] v = valueArrayToArray(keys);
         return Arrays.binarySearch(v, key, comparator);
@@ -639,12 +639,12 @@ public class SerializerStringDelta2 implements  GroupSerializer<String,Serialize
 
 
     @Override
-    public int valueArraySize(SerializerStringDelta2.StringArrayKeys vals) {
-        return vals.length();
+    public int valueArraySize(Object vals) {
+        return ((StringArrayKeys)vals).length();
     }
 
     @Override
-    public SerializerStringDelta2.StringArrayKeys valueArrayUpdateVal(SerializerStringDelta2.StringArrayKeys vals, int pos, String newValue) {
+    public StringArrayKeys valueArrayUpdateVal(Object vals, int pos, String newValue) {
         //TODO PERF optimize value update
         Object[] v = valueArrayToArray(vals);
         v[pos] = newValue;

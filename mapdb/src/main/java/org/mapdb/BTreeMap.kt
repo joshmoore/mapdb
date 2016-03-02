@@ -76,8 +76,8 @@ import java.util.function.BiConsumer
  * @author some parts by Doug Lea and JSR-166 group
  */
 class BTreeMap<K,V>(
-        keySerializer:Serializer<K>,
-        valueSerializer:Serializer<V>,
+        override val keySerializer:GroupSerializer<K>,
+        override val valueSerializer:GroupSerializer<V>,
         val rootRecidRecid:Long,
         val store:Store,
         val maxNodeSize:Int,
@@ -88,17 +88,14 @@ class BTreeMap<K,V>(
 ):Verifiable, Closeable, Serializable,
         ConcurrentNavigableMap<K, V>, ConcurrentNavigableMapExtra<K,V> {
 
-    override val keySerializer:GroupSerializer<K,Any?> = keySerializer as GroupSerializer<K,Any?>
-    override val valueSerializer:GroupSerializer<V,Any?> = valueSerializer  as GroupSerializer<V,Any?>
-
 
     companion object {
         fun <K, V> make(
-                keySerializer: Serializer<K> = Serializer.JAVA as Serializer<K>,
-                valueSerializer: Serializer<V> = Serializer.JAVA as Serializer<V>,
+                keySerializer: GroupSerializer<K> = Serializer.JAVA as GroupSerializer<K>,
+                valueSerializer: GroupSerializer<V> = Serializer.JAVA as GroupSerializer<V>,
                 store: Store = StoreTrivial(),
                 rootRecidRecid: Long = //insert recid of new empty node
-                putEmptyRoot(store, keySerializer as GroupSerializer<K,Any?>, valueSerializer as GroupSerializer<V,Any?>),
+                        putEmptyRoot(store, keySerializer, valueSerializer),
                 maxNodeSize: Int =  CC.BTREEMAP_MAX_NODE_SIZE ,
                 comparator: Comparator<K> = keySerializer,
                 threadSafe:Boolean = true,
@@ -115,7 +112,7 @@ class BTreeMap<K,V>(
                         counterRecid = counterRecid
                 )
 
-        internal fun <K, V> putEmptyRoot(store: Store, keySerializer: GroupSerializer<K, *>, valueSerializer: GroupSerializer<V,*>): Long {
+        internal fun <K, V> putEmptyRoot(store: Store, keySerializer: GroupSerializer<K>, valueSerializer: GroupSerializer<V>): Long {
             return store.put(
                     store.put(
                             Node(LEFT + RIGHT, 0L, keySerializer.valueArrayEmpty(),
@@ -125,14 +122,14 @@ class BTreeMap<K,V>(
         }
 
 
-        internal val NO_VAL_SERIALIZER = object: GroupSerializer<Boolean,Int>{
+        internal val NO_VAL_SERIALIZER = object: GroupSerializer<Boolean>{
 
-            override fun valueArrayCopyOfRange(vals: Int?, from: Int, to: Int): Int? {
+            override fun valueArrayCopyOfRange(vals: Any?, from: Int, to: Int): Int? {
                 return to-from;
             }
 
-            override fun valueArrayDeleteValue(vals: Int, pos: Int): Int? {
-                return vals-1
+            override fun valueArrayDeleteValue(vals: Any?, pos: Int): Int? {
+                return vals as Int-1
             }
 
             override fun valueArrayDeserialize(`in`: DataInput2?, size: Int): Int? {
@@ -147,31 +144,31 @@ class BTreeMap<K,V>(
                 throw IllegalAccessError()
             }
 
-            override fun valueArrayGet(vals: Int?, pos: Int): Boolean? {
+            override fun valueArrayGet(vals: Any?, pos: Int): Boolean? {
                 return java.lang.Boolean.TRUE
             }
 
-            override fun valueArrayPut(vals: Int?, pos: Int, newValue: Boolean?): Int? {
-                return vals!! + 1
+            override fun valueArrayPut(vals: Any?, pos: Int, newValue: Boolean?): Int? {
+                return vals as Int + 1
             }
 
-            override fun valueArraySearch(keys: Int?, key: Boolean?): Int {
+            override fun valueArraySearch(keys: Any?, key: Boolean?): Int {
                 throw IllegalAccessError()
             }
 
-            override fun valueArraySearch(keys: Int?, key: Boolean?, comparator: Comparator<*>?): Int {
+            override fun valueArraySearch(keys: Any?, key: Boolean?, comparator: Comparator<*>?): Int {
                 throw IllegalAccessError()
             }
 
-            override fun valueArraySerialize(out: DataOutput2?, vals: Int?) {
+            override fun valueArraySerialize(out: DataOutput2?, vals: Any?) {
             }
 
-            override fun valueArraySize(vals: Int?): Int {
-                return vals!!
+            override fun valueArraySize(vals: Any?): Int {
+                return vals as Int
             }
 
-            override fun valueArrayUpdateVal(vals: Int?, pos: Int, newValue: Boolean?): Int? {
-                return vals
+            override fun valueArrayUpdateVal(vals: Any?, pos: Int, newValue: Boolean?): Int? {
+                return vals as Int
             }
 
             override fun deserialize(input: DataInput2, available: Int): Boolean? {

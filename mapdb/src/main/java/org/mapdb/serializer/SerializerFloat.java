@@ -34,7 +34,7 @@ public class SerializerFloat extends SerializerFourByte<Float> {
 
 
     @Override
-    public int valueArraySearch(int[] keys, Float key) {
+    public int valueArraySearch(Object keys, Float key) {
         //TODO PERF this can be optimized, but must take care of NaN
         return Arrays.binarySearch(valueArrayToArray(keys), key);
     }

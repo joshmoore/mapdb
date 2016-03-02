@@ -10,8 +10,8 @@ import kotlin.test.*
 
 class BTreeMapTest {
 
-    val keyser = Serializer.JAVA as GroupSerializer<Any?, Any?>
-    val COMPARATOR = keyser as Comparator<Any?>
+    val keyser = Serializer.JAVA
+    val COMPARATOR = keyser
 
     @Test fun node_search() {
         val node = Node(

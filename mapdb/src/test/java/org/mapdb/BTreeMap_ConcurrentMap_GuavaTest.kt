@@ -49,12 +49,12 @@ class BTreeMap_ConcurrentMap_GuavaTest(
 
                     val nodeSize = if(small) 4 else 32
                     val counterRecid = if(counter) store.put(0L, Serializer.LONG) else 0L
-                    var keySer = if(generic==null) Serializer.INTEGER else {
-                            if(generic) Serializer.JAVA as Serializer<Int> else Serializer.INTEGER
+                    var keySer:GroupSerializer<Int> = if(generic==null) Serializer.INTEGER else {
+                            if(generic) Serializer.JAVA as GroupSerializer<Int> else Serializer.INTEGER
                         }
 
                     if(otherComparator)
-                        keySer = object: GroupSerializer<Int,Any> by (keySer as GroupSerializer<Int,Any>){
+                        keySer = object: GroupSerializer<Int> by keySer{
                             override fun compare(o1: Int?, o2: Int?): Int {
                                 throw AssertionError()
                             }
@@ -65,7 +65,7 @@ class BTreeMap_ConcurrentMap_GuavaTest(
                         }
 
                     val valSer = if(generic==null) Serializer.INTEGER else{
-                            if(generic) Serializer.JAVA as Serializer<String> else Serializer.STRING
+                            if(generic) Serializer.JAVA as GroupSerializer<String> else Serializer.STRING
                         }
                     BTreeMap.make(keySerializer = keySer, valueSerializer = valSer,
                             comparator = if(otherComparator) Serializer.JAVA as Comparator<Int> else keySer,

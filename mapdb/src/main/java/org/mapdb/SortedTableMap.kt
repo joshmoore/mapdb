@@ -12,16 +12,12 @@ import java.util.function.BiConsumer
  */
 //TODO hashCodes for subcollections, use key/valueSerializers
 class SortedTableMap<K,V>(
-        keySerializer : Serializer<K>,
-        valueSerializer : Serializer<V>,
+        override val keySerializer: GroupSerializer<K>,
+        override val valueSerializer : GroupSerializer<V>,
         val pageSize:Int,
         internal val volume: Volume,
         override val hasValues: Boolean = false
 ): ConcurrentMap<K, V>, ConcurrentNavigableMap<K, V>, ConcurrentNavigableMapExtra<K,V> {
-
-    override val keySerializer: GroupSerializer<K, Any?> = keySerializer as GroupSerializer<K, Any?>
-    override val valueSerializer: GroupSerializer<V, Any?> = valueSerializer  as GroupSerializer<V, Any?>
-
 
     abstract class Consumer<K,V>:Pump.Consumer<Pair<K,V>, SortedTableMap<K,V>>(){
         fun take(key:K, value:V){
@@ -33,8 +29,8 @@ class SortedTableMap<K,V>(
 
         class Maker<K,V>(){
             internal var _volume: Volume? = null
-            internal var _keySerializer: Serializer<K>? = null
-            internal var _valueSerializer: Serializer<V>? = null
+            internal var _keySerializer: GroupSerializer<K>? = null
+            internal var _valueSerializer: GroupSerializer<V>? = null
             internal var _pageSize:Int = CC.PAGE_SIZE.toInt()
             internal var _nodeSize:Int = CC.BTREEMAP_MAX_NODE_SIZE
 
@@ -76,8 +72,8 @@ class SortedTableMap<K,V>(
 
         @JvmStatic fun <K,V> create(
                 volume: Volume,
-                keySerializer:Serializer<K>,
-                valueSerializer:Serializer<V>
+                keySerializer:GroupSerializer<K>,
+                valueSerializer:GroupSerializer<V>
             ):Maker<K,V> {
             val ret = Maker<K,V>()
             ret._volume = volume
@@ -89,8 +85,8 @@ class SortedTableMap<K,V>(
 
         @JvmStatic fun <K,V> open(
                 volume: Volume,
-                keySerializer:Serializer<K>,
-                valueSerializer:Serializer<V>
+                keySerializer:GroupSerializer<K>,
+                valueSerializer:GroupSerializer<V>
         ):SortedTableMap<K,V> {
             val pageSize = volume.getLong(PAGE_SIZE_OFFSET)
             if(pageSize<=0||pageSize>CC.PAGE_SIZE)
@@ -104,14 +100,12 @@ class SortedTableMap<K,V>(
         }
 
         internal fun <K,V> import(
-                keySerializer:Serializer<K>,
-                valueSerializer:Serializer<V>,
+                keySerializer:GroupSerializer<K>,
+                valueSerializer:GroupSerializer<V>,
                 volume: Volume,
                 pageSize:Int = CC.PAGE_SIZE.toInt(),
                 nodeSize:Int = CC.BTREEMAP_MAX_NODE_SIZE
         ):Consumer<K,V> {
-            val keySerializer = keySerializer as GroupSerializer<K, Any?>
-            val valueSerializer = valueSerializer as GroupSerializer<V, Any?>
 
             return object:Consumer<K,V>(){
 

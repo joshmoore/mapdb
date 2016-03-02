@@ -21,7 +21,8 @@ public class SerializerLongDelta extends SerializerLong {
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, long[] keys) throws IOException {
+    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
+        long[] keys = (long[]) vals;
         long prev = keys[0];
         out.packLong(prev);
         for (int i = 1; i < keys.length; i++) {

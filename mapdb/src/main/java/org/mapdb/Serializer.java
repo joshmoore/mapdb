@@ -32,7 +32,7 @@ import java.util.*;
 public interface Serializer<A> extends Comparator<A>{
 
 
-    Serializer<Character> CHAR = new SerializerChar();
+    GroupSerializer<Character> CHAR = new SerializerChar();
 
 
 
@@ -45,17 +45,17 @@ public interface Serializer<A> extends Comparator<A>{
      * Unlike {@link Serializer#STRING} this method hashes String with {@link String#hashCode()}
      * </p>
      */
-    Serializer<String> STRING_ORIGHASH = new SerializerStringOrigHash();
+    GroupSerializer<String> STRING_ORIGHASH = new SerializerStringOrigHash();
 
     /**
      * Serializes strings using UTF8 encoding.
      * Stores string size so can be used as collection serializer.
      * Does not handle null values
      */
-    Serializer<String> STRING = new SerializerString();
+    GroupSerializer<String> STRING = new SerializerString();
 
-    Serializer<String> STRING_DELTA = new SerializerStringDelta();
-    Serializer<String> STRING_DELTA2 = new SerializerStringDelta2();
+    GroupSerializer<String> STRING_DELTA = new SerializerStringDelta();
+    GroupSerializer<String> STRING_DELTA2 = new SerializerStringDelta2();
 
 
 
@@ -67,7 +67,7 @@ public interface Serializer<A> extends Comparator<A>{
      * Stores string size so can be used as collection serializer.
      * Does not handle null values
      */
-    Serializer<String> STRING_INTERN = new SerializerStringIntern();
+    GroupSerializer<String> STRING_INTERN = new SerializerStringIntern();
 
     /**
      * Serializes strings using ASCII encoding (8 bit character).
@@ -75,7 +75,7 @@ public interface Serializer<A> extends Comparator<A>{
      * Stores string size so can be used as collection serializer.
      * Does not handle null values
      */
-    Serializer<String> STRING_ASCII = new SerializerStringAscii();
+    GroupSerializer<String> STRING_ASCII = new SerializerStringAscii();
 
     /**
      * Serializes strings using UTF8 encoding.
@@ -91,32 +91,32 @@ public interface Serializer<A> extends Comparator<A>{
     /** Serializes Long into 8 bytes, used mainly for testing.
      * Does not handle null values.*/
 
-    Serializer<Long> LONG = new SerializerLong();
+    GroupSerializer<Long> LONG = new SerializerLong();
 
     /**
      *  Packs positive LONG, so smaller positive values occupy less than 8 bytes.
      *  Large and negative values could occupy 8 or 9 bytes.
      */
-    Serializer<Long> LONG_PACKED = new SerializerLongPacked();
+    GroupSerializer<Long> LONG_PACKED = new SerializerLongPacked();
 
     /**
      * Applies delta packing on {@code java.lang.Long}.
      * Difference between consequential numbers is also packed itself, so for small diffs it takes only single byte per
      * number.
      */
-    Serializer<Long> LONG_DELTA = new SerializerLongDelta();
+    GroupSerializer<Long> LONG_DELTA = new SerializerLongDelta();
 
 
     /** Serializes Integer into 4 bytes, used mainly for testing.
      * Does not handle null values.*/
 
-    Serializer<Integer> INTEGER = new SerializerInteger();
+    GroupSerializer<Integer> INTEGER = new SerializerInteger();
 
     /**
      *  Packs positive Integer, so smaller positive values occupy less than 4 bytes.
      *  Large and negative values could occupy 4 or 5 bytes.
      */
-    Serializer<Integer> INTEGER_PACKED = new SerializerIntegerPacked();
+    GroupSerializer<Integer> INTEGER_PACKED = new SerializerIntegerPacked();
 
 
     /**
@@ -124,33 +124,33 @@ public interface Serializer<A> extends Comparator<A>{
      * Difference between consequential numbers is also packed itself, so for small diffs it takes only single byte per
      * number.
      */
-    Serializer<Integer> INTEGER_DELTA = new SerializerIntegerDelta();
+    GroupSerializer<Integer> INTEGER_DELTA = new SerializerIntegerDelta();
 
 
-    Serializer<Boolean> BOOLEAN = new SerializerBoolean();
+    GroupSerializer<Boolean> BOOLEAN = new SerializerBoolean();
 
     ;
 
 
     /** Packs recid + it adds 3bits checksum. */
 
-    Serializer<Long> RECID = new SerializerRecid();
+    GroupSerializer<Long> RECID = new SerializerRecid();
 
-    Serializer<long[]> RECID_ARRAY = new SerializerRecidArray();
+    GroupSerializer<long[]> RECID_ARRAY = new SerializerRecidArray();
 
     /**
      * Always throws {@link IllegalAccessError} when invoked. Useful for testing and assertions.
      */
-    Serializer<Object> ILLEGAL_ACCESS = new SerializerIllegalAccess();
+    GroupSerializer<Object> ILLEGAL_ACCESS = new SerializerIllegalAccess();
 
 
     /**
      * Serializes {@code byte[]} it adds header which contains size information
      */
-    Serializer<byte[]> BYTE_ARRAY = new SerializerByteArray();
+    GroupSerializer<byte[]> BYTE_ARRAY = new SerializerByteArray();
 
-    Serializer<byte[]> BYTE_ARRAY_DELTA = new SerializerByteArrayDelta();
-    Serializer<byte[]> BYTE_ARRAY_DELTA2 = new SerializerByteArrayDelta2();
+    GroupSerializer<byte[]> BYTE_ARRAY_DELTA = new SerializerByteArrayDelta();
+    GroupSerializer<byte[]> BYTE_ARRAY_DELTA2 = new SerializerByteArrayDelta2();
 
     /**
      * Serializes {@code byte[]} directly into underlying store
@@ -161,42 +161,42 @@ public interface Serializer<A> extends Comparator<A>{
     /**
      * Serializes {@code char[]} it adds header which contains size information
      */
-    Serializer<char[]> CHAR_ARRAY = new SerializerCharArray();
+    GroupSerializer<char[]> CHAR_ARRAY = new SerializerCharArray();
 
 
     /**
      * Serializes {@code int[]} it adds header which contains size information
      */
-    Serializer<int[]> INT_ARRAY = new SerializerIntArray();
+    GroupSerializer<int[]> INT_ARRAY = new SerializerIntArray();
 
     /**
      * Serializes {@code long[]} it adds header which contains size information
      */
-    Serializer<long[]> LONG_ARRAY = new SerializerLongArray();
+    GroupSerializer<long[]> LONG_ARRAY = new SerializerLongArray();
 
     /**
      * Serializes {@code double[]} it adds header which contains size information
      */
-    Serializer<double[]> DOUBLE_ARRAY = new SerializerDoubleArray();
+    GroupSerializer<double[]> DOUBLE_ARRAY = new SerializerDoubleArray();
 
 
     /** Serializer which uses standard Java Serialization with {@link java.io.ObjectInputStream} and {@link java.io.ObjectOutputStream} */
-    Serializer JAVA = new SerializerJava();
+    GroupSerializer JAVA = new SerializerJava();
 
     /** Serializers {@link java.util.UUID} class */
-    Serializer<java.util.UUID> UUID = new SerializerUUID();
+    GroupSerializer<java.util.UUID> UUID = new SerializerUUID();
 
-    Serializer<Byte> BYTE = new SerializerByte();
+    GroupSerializer<Byte> BYTE = new SerializerByte();
 
-    Serializer<Float> FLOAT = new SerializerFloat();
+    GroupSerializer<Float> FLOAT = new SerializerFloat();
 
 
-    Serializer<Double> DOUBLE = new SerializerDouble();
+    GroupSerializer<Double> DOUBLE = new SerializerDouble();
 
-    Serializer<Short> SHORT = new SerializerShort();
+    GroupSerializer<Short> SHORT = new SerializerShort();
 
 // TODO boolean array
-//    Serializer<boolean[]> BOOLEAN_ARRAY = new Serializer<boolean[]>() {
+//    GroupSerializer<boolean[]> BOOLEAN_ARRAY = new GroupSerializer<boolean[]>() {
 //        @Override
 //        public void serialize(DataOutput2 out, boolean[] value) throws IOException {
 //            out.packInt( value.length);//write the number of booleans not the number of bytes
@@ -227,24 +227,24 @@ public interface Serializer<A> extends Comparator<A>{
 
 
 
-    Serializer<short[]> SHORT_ARRAY = new SerializerShortArray();
+    GroupSerializer<short[]> SHORT_ARRAY = new SerializerShortArray();
 
 
-    Serializer<float[]> FLOAT_ARRAY = new SerializerFloatArray();
+    GroupSerializer<float[]> FLOAT_ARRAY = new SerializerFloatArray();
 
-    Serializer<BigInteger> BIG_INTEGER = new SerializerBigInteger();
+    GroupSerializer<BigInteger> BIG_INTEGER = new SerializerBigInteger();
 
-    Serializer<BigDecimal> BIG_DECIMAL = new SerializerBigDecimal();
+    GroupSerializer<BigDecimal> BIG_DECIMAL = new SerializerBigDecimal();
 
 
-    Serializer<Class<?>> CLASS = new SerializerClass();
+    GroupSerializer<Class<?>> CLASS = new SerializerClass();
 
-    Serializer<Date> DATE = new SerializerDate();
+    GroupSerializer<Date> DATE = new SerializerDate();
 
 
     //    //this has to be lazily initialized due to circular dependencies
 //    static final  class __BasicInstance {
-//        final static Serializer<Object> s = new SerializerBase();
+//        final static GroupSerializer<Object> s = new SerializerBase();
 //    }
 //
 //
@@ -253,7 +253,7 @@ public interface Serializer<A> extends Comparator<A>{
 //     * It does not handle custom POJO classes. It also does not handle classes which
 //     * require access to {@code DB} itself.
 //     */
-//    Serializer<Object> BASIC = new Serializer<Object>(){
+//    GroupSerializer<Object> BASIC = new GroupSerializer<Object>(){
 //
 //        @Override
 //        public void serialize(DataOutput2 out, Object value) throws IOException {

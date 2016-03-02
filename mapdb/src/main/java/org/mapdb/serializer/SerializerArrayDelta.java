@@ -19,7 +19,8 @@ public class SerializerArrayDelta<T> extends SerializerArray<T> {
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, Object[] vals) throws IOException {
+    public void valueArraySerialize(DataOutput2 out, Object vals2) throws IOException {
+        Object[] vals = (Object[]) vals2;
         if (vals.length == 0)
             return;
         //write first array

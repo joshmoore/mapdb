@@ -21,8 +21,8 @@ public class SerializerIntegerPacked extends SerializerInteger {
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, int[] vals) throws IOException {
-        for (int o : vals) {
+    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
+        for (int o : (int[])vals) {
             out.packIntBigger(o);
         }
     }

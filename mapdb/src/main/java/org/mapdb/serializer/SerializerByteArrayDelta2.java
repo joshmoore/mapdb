@@ -1,10 +1,12 @@
 package org.mapdb.serializer;
 
 import org.jetbrains.annotations.NotNull;
+import static org.mapdb.serializer.SerializerStringDelta2.ByteArrayKeys;
 import org.mapdb.DBUtil;
 import org.mapdb.DataInput2;
 import org.mapdb.DataOutput2;
 import org.mapdb.Serializer;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -13,23 +15,24 @@ import java.util.Comparator;
 /**
  * Created by jan on 2/29/16.
  */
-public class SerializerByteArrayDelta2 implements GroupSerializer<byte[],SerializerStringDelta2.ByteArrayKeys> {
+public class SerializerByteArrayDelta2 implements GroupSerializer<byte[]> {
 
 
     @Override
-    public int valueArraySearch(SerializerStringDelta2.ByteArrayKeys keys, byte[] key) {
+    public int valueArraySearch(Object keys, byte[] key) {
         Object[] v = valueArrayToArray(keys);
         return Arrays.binarySearch(v, key, (Comparator)this);
     }
 
     @Override
-    public int valueArraySearch(SerializerStringDelta2.ByteArrayKeys keys, byte[] key, Comparator comparator) {
+    public int valueArraySearch(Object keys, byte[] key, Comparator comparator) {
         Object[] v = valueArrayToArray(keys);
         return Arrays.binarySearch(v, key, comparator);
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, SerializerStringDelta2.ByteArrayKeys keys) throws IOException {
+    public void valueArraySerialize(DataOutput2 out, Object keys2) throws IOException {
+        ByteArrayKeys keys = (ByteArrayKeys) keys2;
         int offset = 0;
         //write sizes
         for(int o:keys.offset){
@@ -51,7 +54,7 @@ public class SerializerByteArrayDelta2 implements GroupSerializer<byte[],Seriali
     }
 
     @Override
-    public SerializerStringDelta2.ByteArrayKeys valueArrayDeserialize(DataInput2 in, int size) throws IOException {
+    public ByteArrayKeys valueArrayDeserialize(DataInput2 in, int size) throws IOException {
         //read data sizes
         int[] offsets = new int[size];
         int old=0;
@@ -75,36 +78,37 @@ public class SerializerByteArrayDelta2 implements GroupSerializer<byte[],Seriali
             offset = o+prefixLen;
         }
 
-        return new SerializerStringDelta2.ByteArrayKeys(offsets,bb);
+        return new ByteArrayKeys(offsets,bb);
     }
 
     @Override
-    public byte[] valueArrayGet(SerializerStringDelta2.ByteArrayKeys keys, int pos) {
-        return keys.getKey(pos);
+    public byte[] valueArrayGet(Object keys, int pos) {
+        return ((ByteArrayKeys)keys).getKey(pos);
     }
 
     @Override
-    public int valueArraySize(SerializerStringDelta2.ByteArrayKeys keys) {
-        return keys.length();
+    public int valueArraySize(Object keys) {
+        return ((ByteArrayKeys)keys).length();
     }
 
     @Override
-    public SerializerStringDelta2.ByteArrayKeys valueArrayEmpty() {
-        return new SerializerStringDelta2.ByteArrayKeys(new int[0], new byte[0]);
+    public ByteArrayKeys valueArrayEmpty() {
+        return new ByteArrayKeys(new int[0], new byte[0]);
     }
 
     @Override
-    public SerializerStringDelta2.ByteArrayKeys valueArrayPut(SerializerStringDelta2.ByteArrayKeys keys, int pos, byte[] newValue) {
-        return keys.putKey(pos, newValue);
+    public ByteArrayKeys valueArrayPut(Object keys, int pos, byte[] newValue) {
+        return ((ByteArrayKeys)keys).putKey(pos, newValue);
     }
 
     @Override
-    public SerializerStringDelta2.ByteArrayKeys valueArrayUpdateVal(SerializerStringDelta2.ByteArrayKeys vals, int pos, byte[] newValue) {
-        return null;
+    public ByteArrayKeys valueArrayUpdateVal(Object vals, int pos, byte[] newValue) {
+        //FIXME why is this not catched by tests?
+        throw new NotImplementedException();
     }
 
     @Override
-    public SerializerStringDelta2.ByteArrayKeys valueArrayFromArray(Object[] keys) {
+    public ByteArrayKeys valueArrayFromArray(Object[] keys) {
         //fill offsets
         int[] offsets = new int[keys.length];
 
@@ -124,16 +128,16 @@ public class SerializerByteArrayDelta2 implements GroupSerializer<byte[],Seriali
             old=curr;
         }
         //$DELAY$
-        return new SerializerStringDelta2.ByteArrayKeys(offsets,bb);
+        return new ByteArrayKeys(offsets,bb);
     }
 
     @Override
-    public SerializerStringDelta2.ByteArrayKeys valueArrayCopyOfRange(SerializerStringDelta2.ByteArrayKeys keys, int from, int to) {
-        return keys.copyOfRange(from,to);
+    public ByteArrayKeys valueArrayCopyOfRange(Object keys, int from, int to) {
+        return ((ByteArrayKeys)keys).copyOfRange(from,to);
     }
 
     @Override
-    public SerializerStringDelta2.ByteArrayKeys valueArrayDeleteValue(SerializerStringDelta2.ByteArrayKeys keys, int pos) {
+    public ByteArrayKeys valueArrayDeleteValue(Object keys, int pos) {
         //return keys.deleteKey(pos);
         Object[] vv = valueArrayToArray(keys);
         vv = DBUtil.arrayDelete(vv, pos, 1);

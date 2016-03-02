@@ -13,7 +13,8 @@ public class SerializerByteArrayDelta extends SerializerByteArray {
     //TODO PERF char[][] versus Object[]
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, byte[][] chars) throws IOException {
+    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
+        byte[][] chars = (byte[][]) vals;
         //write lengths
         for(byte[] b:chars){
             out.packInt(b.length);

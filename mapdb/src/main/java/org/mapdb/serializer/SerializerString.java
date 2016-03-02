@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 
-public class SerializerString implements GroupSerializer<String, char[][]> {
+public class SerializerString implements GroupSerializer<String> {
 
     @Override
     public void serialize(DataOutput2 out, String value) throws IOException {
@@ -27,8 +27,8 @@ public class SerializerString implements GroupSerializer<String, char[][]> {
 
 
     @Override
-    public void valueArraySerialize(DataOutput2 out2, char[][] vals2) throws IOException {
-        for(char[] v:vals2){
+    public void valueArraySerialize(DataOutput2 out2, Object vals) throws IOException {
+        for(char[] v:(char[][])vals){
             out2.packInt(v.length);
             for(char c:v){
                 out2.packInt(c);
@@ -51,13 +51,14 @@ public class SerializerString implements GroupSerializer<String, char[][]> {
     }
 
     @Override
-    public int valueArraySearch(char[][] keys, String key) {
+    public int valueArraySearch(Object keys, String key) {
         char[] key2 = key.toCharArray();
-        return Arrays.binarySearch(keys, key2, CHAR_ARRAY);
+        return Arrays.binarySearch((char[][])keys, key2, CHAR_ARRAY);
     }
 
     @Override
-    public int valueArraySearch(char[][] array, String key, Comparator comparator) {
+    public int valueArraySearch(Object vals, String key, Comparator comparator) {
+        char[][] array = (char[][]) vals;
         int lo = 0;
         int hi = array.length - 1;
 
@@ -76,13 +77,13 @@ public class SerializerString implements GroupSerializer<String, char[][]> {
     }
 
     @Override
-    public String valueArrayGet(char[][] vals, int pos) {
-        return new String(vals[pos]);
+    public String valueArrayGet(Object vals, int pos) {
+        return new String(((char[][])vals)[pos]);
     }
 
     @Override
-    public int valueArraySize(char[][] vals) {
-        return vals.length;
+    public int valueArraySize(Object vals) {
+        return ((char[][])vals).length;
     }
 
     @Override
@@ -91,7 +92,8 @@ public class SerializerString implements GroupSerializer<String, char[][]> {
     }
 
     @Override
-    public char[][] valueArrayPut(char[][] array, int pos, String newValue) {
+    public char[][] valueArrayPut(Object vals, int pos, String newValue) {
+        char[][] array = (char[][]) vals;
         final char[][] ret = Arrays.copyOf(array, array.length+1);
         if(pos<array.length){
             System.arraycopy(array, pos, ret, pos+1, array.length-pos);
@@ -102,10 +104,11 @@ public class SerializerString implements GroupSerializer<String, char[][]> {
     }
 
     @Override
-    public char[][] valueArrayUpdateVal(char[][] vals, int pos, String newValue) {
-        vals = vals.clone();
-        vals[pos] = newValue.toCharArray();
-        return vals;
+    public char[][] valueArrayUpdateVal(Object vals, int pos, String newValue) {
+        char[][] vals2 = (char[][]) vals;
+        vals2 = vals2.clone();
+        vals2[pos] = newValue.toCharArray();
+        return vals2;
     }
 
     @Override
@@ -118,13 +121,13 @@ public class SerializerString implements GroupSerializer<String, char[][]> {
     }
 
     @Override
-    public char[][] valueArrayCopyOfRange(char[][] vals, int from, int to) {
-        return Arrays.copyOfRange(vals, from, to);
+    public char[][] valueArrayCopyOfRange(Object vals, int from, int to) {
+        return Arrays.copyOfRange((char[][])vals, from, to);
     }
 
     @Override
-    public char[][] valueArrayDeleteValue(char[][] vals, int pos) {
-        char[][] vals2 = new char[vals.length-1][];
+    public char[][] valueArrayDeleteValue(Object vals, int pos) {
+        char[][] vals2 = new char[((char[][])vals).length-1][];
         System.arraycopy(vals,0,vals2, 0, pos-1);
         System.arraycopy(vals, pos, vals2, pos-1, vals2.length-(pos-1));
         return vals2;

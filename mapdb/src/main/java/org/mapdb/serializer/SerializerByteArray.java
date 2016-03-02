@@ -12,7 +12,7 @@ import java.util.Comparator;
 /**
  * Created by jan on 2/28/16.
  */
-public class SerializerByteArray implements GroupSerializer<byte[], byte[][]> {
+public class SerializerByteArray implements GroupSerializer<byte[]> {
 
     @Override
     public void serialize(DataOutput2 out, byte[] value) throws IOException {
@@ -58,21 +58,22 @@ public class SerializerByteArray implements GroupSerializer<byte[], byte[][]> {
     }
 
     @Override
-    public int valueArraySearch(byte[][] keys, byte[] key) {
-        return Arrays.binarySearch(keys, key, Serializer.BYTE_ARRAY);
+    public int valueArraySearch(Object keys, byte[] key) {
+        return Arrays.binarySearch((byte[][])keys, key, Serializer.BYTE_ARRAY);
     }
 
     @Override
-    public int valueArraySearch(byte[][] keys, byte[] key, Comparator comparator) {
+    public int valueArraySearch(Object keys, byte[] key, Comparator comparator) {
         //TODO PERF optimize search
         Object[] v = valueArrayToArray(keys);
         return Arrays.binarySearch(v, key, comparator);
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, byte[][] vals) throws IOException {
-        out.packInt(vals.length);
-        for(byte[]b:vals){
+    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
+        byte[][] vals2 = (byte[][]) vals;
+        out.packInt(vals2.length);
+        for(byte[]b:vals2){
             Serializer.BYTE_ARRAY.serialize(out, b);
         }
     }
@@ -88,13 +89,13 @@ public class SerializerByteArray implements GroupSerializer<byte[], byte[][]> {
     }
 
     @Override
-    public byte[] valueArrayGet(byte[][] vals, int pos) {
-        return vals[pos];
+    public byte[] valueArrayGet(Object vals, int pos) {
+        return ((byte[][])vals)[pos];
     }
 
     @Override
-    public int valueArraySize(byte[][] vals) {
-        return vals.length;
+    public int valueArraySize(Object vals) {
+        return ((byte[][])vals).length;
     }
 
     @Override
@@ -103,7 +104,8 @@ public class SerializerByteArray implements GroupSerializer<byte[], byte[][]> {
     }
 
     @Override
-    public byte[][] valueArrayPut(byte[][] array, int pos, byte[] newValue) {
+    public byte[][] valueArrayPut(Object vals, int pos, byte[] newValue) {
+        byte[][] array = (byte[][])vals;
         final byte[][] ret = Arrays.copyOf(array, array.length+1);
         if(pos<array.length){
             System.arraycopy(array, pos, ret, pos+1, array.length-pos);
@@ -113,10 +115,11 @@ public class SerializerByteArray implements GroupSerializer<byte[], byte[][]> {
     }
 
     @Override
-    public byte[][] valueArrayUpdateVal(byte[][] vals, int pos, byte[] newValue) {
-        vals = vals.clone();
-        vals[pos] = newValue;
-        return vals;
+    public byte[][] valueArrayUpdateVal(Object vals, int pos, byte[] newValue) {
+        byte[][] vals2 = (byte[][]) vals;
+        vals2 = vals2.clone();
+        vals2[pos] = newValue;
+        return vals2;
     }
 
     @Override
@@ -129,13 +132,13 @@ public class SerializerByteArray implements GroupSerializer<byte[], byte[][]> {
     }
 
     @Override
-    public byte[][] valueArrayCopyOfRange(byte[][] vals, int from, int to) {
-        return Arrays.copyOfRange(vals, from, to);
+    public byte[][] valueArrayCopyOfRange(Object vals, int from, int to) {
+        return Arrays.copyOfRange((byte[][])vals, from, to);
     }
 
     @Override
-    public byte[][] valueArrayDeleteValue(byte[][] vals, int pos) {
-        byte[][] vals2 = new byte[vals.length-1][];
+    public byte[][] valueArrayDeleteValue(Object vals, int pos) {
+        byte[][] vals2 = new byte[((byte[][])vals).length-1][];
         System.arraycopy(vals,0,vals2, 0, pos-1);
         System.arraycopy(vals, pos, vals2, pos-1, vals2.length-(pos-1));
         return vals2;

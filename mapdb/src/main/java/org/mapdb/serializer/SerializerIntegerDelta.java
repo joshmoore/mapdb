@@ -22,7 +22,8 @@ public class SerializerIntegerDelta extends SerializerInteger {
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, int[] keys) throws IOException {
+    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
+        int[] keys = (int[]) vals;
         int prev = keys[0];
         out.packInt(prev);
         for (int i = 1; i < keys.length; i++) {

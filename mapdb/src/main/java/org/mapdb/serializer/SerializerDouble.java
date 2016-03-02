@@ -21,7 +21,7 @@ public class SerializerDouble extends SerializerEightByte<Double> {
     }
 
     @Override
-    public int valueArraySearch(long[] keys, Double key) {
+    public int valueArraySearch(Object keys, Double key) {
         //TODO PERF this can be optimized, but must take care of NaN
         return Arrays.binarySearch(valueArrayToArray(keys), key);
     }

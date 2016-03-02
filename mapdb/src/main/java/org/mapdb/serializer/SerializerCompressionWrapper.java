@@ -7,22 +7,18 @@ import java.io.Serializable;
 import java.util.Comparator;
 
 /** wraps another serializer and (de)compresses its output/input*/
-public final class SerializerCompressionWrapper<E,G> implements GroupSerializer<E,G>, Serializable {
+public final class SerializerCompressionWrapper<E> implements GroupSerializer<E>, Serializable {
 
     private static final long serialVersionUID = 4440826457939614346L;
-    protected final GroupSerializer<E,G> serializer;
+    protected final GroupSerializer<E> serializer;
     protected final ThreadLocal<CompressLZF> LZF = new ThreadLocal<CompressLZF>() {
         @Override protected CompressLZF initialValue() {
             return new CompressLZF();
         }
     };
 
-    public SerializerCompressionWrapper(GroupSerializer<E,G> serializer) {
+    public SerializerCompressionWrapper(GroupSerializer<E> serializer) {
         this.serializer = serializer;
-    }
-
-    public SerializerCompressionWrapper(Serializer<E> serializer) {
-        this.serializer = (GroupSerializer)serializer;
     }
 
 
@@ -96,17 +92,17 @@ public final class SerializerCompressionWrapper<E,G> implements GroupSerializer<
     }
 
     @Override
-    public int valueArraySearch(G keys, E key) {
+    public int valueArraySearch(Object keys, E key) {
         return serializer.valueArraySearch(keys, key);
     }
 
     @Override
-    public int valueArraySearch(G keys, E key, Comparator comparator) {
+    public int valueArraySearch(Object keys, E key, Comparator comparator) {
         return serializer.valueArraySearch(keys, key, comparator);
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, G vals) throws IOException {
+    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
 
         DataOutput2 out2 = new DataOutput2();
         serializer.valueArraySerialize(out2, vals);
@@ -134,7 +130,7 @@ public final class SerializerCompressionWrapper<E,G> implements GroupSerializer<
     }
 
     @Override
-    public G valueArrayDeserialize(DataInput2 in, int size) throws IOException {
+    public Object valueArrayDeserialize(DataInput2 in, int size) throws IOException {
         if(size==0)
             return serializer.valueArrayEmpty();
 
@@ -147,49 +143,49 @@ public final class SerializerCompressionWrapper<E,G> implements GroupSerializer<
         byte[] unpacked = new byte[unpackedSize];
         LZF.get().expand(in,unpacked,0,unpackedSize);
         DataInput2.ByteArray in2 = new DataInput2.ByteArray(unpacked);
-        G ret =  serializer.valueArrayDeserialize(in2, size);
+        Object ret =  serializer.valueArrayDeserialize(in2, size);
         if(CC.ASSERT && ! (in2.pos==unpackedSize))
             throw new DBException.DataCorruption( "data were not fully read");
         return ret;
     }
 
     @Override
-    public E valueArrayGet(G vals, int pos) {
+    public E valueArrayGet(Object vals, int pos) {
         return serializer.valueArrayGet(vals, pos);
     }
 
     @Override
-    public int valueArraySize(G vals) {
+    public int valueArraySize(Object vals) {
         return serializer.valueArraySize(vals);
     }
 
     @Override
-    public G valueArrayEmpty() {
+    public Object valueArrayEmpty() {
         return serializer.valueArrayEmpty();
     }
 
     @Override
-    public G valueArrayPut(G vals, int pos, E newValue) {
+    public Object valueArrayPut(Object vals, int pos, E newValue) {
         return serializer.valueArrayPut(vals, pos, newValue);
     }
 
     @Override
-    public G valueArrayUpdateVal(G vals, int pos, E newValue) {
+    public Object valueArrayUpdateVal(Object vals, int pos, E newValue) {
         return serializer.valueArrayUpdateVal(vals, pos, newValue);
     }
 
     @Override
-    public G valueArrayFromArray(Object[] objects) {
+    public Object valueArrayFromArray(Object[] objects) {
         return serializer.valueArrayFromArray(objects);
     }
 
     @Override
-    public G valueArrayCopyOfRange(G vals, int from, int to) {
+    public Object valueArrayCopyOfRange(Object vals, int from, int to) {
         return  serializer.valueArrayCopyOfRange(vals, from, to);
     }
 
     @Override
-    public G valueArrayDeleteValue(G vals, int pos) {
+    public Object valueArrayDeleteValue(Object vals, int pos) {
         return serializer.valueArrayDeleteValue(vals, pos);
     }
 

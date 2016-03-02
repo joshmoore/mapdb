@@ -31,15 +31,13 @@ object Pump{
 
     fun <K,V> treeMap(
             store:Store,
-            keySerializer:Serializer<K>,
-            valueSerializer:Serializer<V>,
+            keySerializer:GroupSerializer<K>,
+            valueSerializer:GroupSerializer<V>,
             comparator:Comparator<K> = keySerializer,
             leafNodeSize:Int = CC.BTREEMAP_MAX_NODE_SIZE*3/4,
             dirNodeSize:Int = CC.BTREEMAP_MAX_NODE_SIZE*3/4
     ): Consumer<Pair<K,V>,Unit>{
 
-        val keySerializer = keySerializer as GroupSerializer<K, Any?>
-        val valueSerializer = valueSerializer as GroupSerializer<V, Any?>
         var prevKey:K? = null
 
         class DirData {

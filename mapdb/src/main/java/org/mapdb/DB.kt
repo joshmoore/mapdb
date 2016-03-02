@@ -750,10 +750,9 @@ open class DB(
 
         override val type = "TreeMap"
 
-        private var _keySerializer:Serializer<K> = Serializer.JAVA as Serializer<K>
-        private var _valueSerializer:Serializer<V> =
-                if(hasValues) Serializer.JAVA as Serializer<V>
-                else BTreeMap.NO_VAL_SERIALIZER as Serializer<V>
+        private var _keySerializer:GroupSerializer<K> = Serializer.JAVA as GroupSerializer<K>
+        private var _valueSerializer:GroupSerializer<V> =
+                (if(hasValues) Serializer.JAVA else BTreeMap.NO_VAL_SERIALIZER) as GroupSerializer<V>
         private var _maxNodeSize = CC.BTREEMAP_MAX_NODE_SIZE
         private var _counterEnable: Boolean = false
         private var _valueLoader:((key:K)->V)? = null
@@ -764,15 +763,15 @@ open class DB(
         private var _counterRecid:Long? = null
 
 
-        fun <A> keySerializer(keySerializer:Serializer<A>):TreeMapMaker<A,V>{
-            _keySerializer = keySerializer as Serializer<K>
+        fun <A> keySerializer(keySerializer:GroupSerializer<A>):TreeMapMaker<A,V>{
+            _keySerializer = keySerializer as GroupSerializer<K>
             return this as TreeMapMaker<A, V>
         }
 
-        fun <A> valueSerializer(valueSerializer:Serializer<A>):TreeMapMaker<K,A>{
+        fun <A> valueSerializer(valueSerializer:GroupSerializer<A>):TreeMapMaker<K,A>{
             if(!hasValues)
                 throw DBException.WrongConfiguration("Set, no vals")
-            _valueSerializer = valueSerializer as Serializer<V>
+            _valueSerializer = valueSerializer as GroupSerializer<V>
             return this as TreeMapMaker<K, A>
         }
 
@@ -854,7 +853,7 @@ open class DB(
             }
 
             val rootRecidRecid2 = _rootRecidRecid
-                    ?: BTreeMap.putEmptyRoot(db.store, _keySerializer as GroupSerializer<K, Any?>, _valueSerializer as GroupSerializer<V,Any?>)
+                    ?: BTreeMap.putEmptyRoot(db.store, _keySerializer , _valueSerializer)
             catalog[name + Keys.rootRecidRecid] = rootRecidRecid2.toString()
 
             val counterRecid2 =
@@ -886,7 +885,7 @@ open class DB(
                             ?: _keySerializer
             _valueSerializer =
                     if(!hasValues) {
-                        BTreeMap.NO_VAL_SERIALIZER as Serializer<V>
+                        BTreeMap.NO_VAL_SERIALIZER as GroupSerializer<V>
                     }else {
                         db.nameCatalogGetClass(catalog, name + Keys.valueSerializer) ?: _valueSerializer
                     }
@@ -927,7 +926,7 @@ open class DB(
         protected val maker = TreeMapMaker<E, Any?>(db, name, hasValues = false)
 
 
-        fun <A> serializer(serializer:Serializer<A>):TreeSetMaker<A>{
+        fun <A> serializer(serializer:GroupSerializer<A>):TreeSetMaker<A>{
             maker.keySerializer(serializer)
             return this as TreeSetMaker<A>
         }
@@ -965,13 +964,13 @@ open class DB(
     }
 
     fun treeMap(name:String):TreeMapMaker<*,*> = TreeMapMaker<Any?, Any?>(this, name)
-    fun <K,V> treeMap(name:String, keySerializer: Serializer<K>, valueSerializer: Serializer<V>) =
+    fun <K,V> treeMap(name:String, keySerializer: GroupSerializer<K>, valueSerializer: GroupSerializer<V>) =
             TreeMapMaker<K,V>(this, name)
                     .keySerializer(keySerializer)
                     .valueSerializer(valueSerializer)
 
     fun treeSet(name:String):TreeSetMaker<*> = TreeSetMaker<Any?>(this, name)
-    fun <E> treeSet(name:String, serializer: Serializer<E>) =
+    fun <E> treeSet(name:String, serializer: GroupSerializer<E>) =
             TreeSetMaker<E>(this, name)
                     .serializer(serializer)
 

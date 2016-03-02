@@ -56,7 +56,8 @@ public class SerializerStringDelta extends SerializerString{
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, char[][]chars) throws IOException {
+    public void valueArraySerialize(DataOutput2 out, Object chars2) throws IOException {
+        char[][] chars = (char[][]) chars2;
         //write lengths
         for(char[] b:chars){
             out.packInt(b.length);

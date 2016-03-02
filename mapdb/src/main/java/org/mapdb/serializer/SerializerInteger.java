@@ -30,7 +30,7 @@ public class SerializerInteger extends SerializerFourByte<Integer> {
     }
 
     @Override
-    public int valueArraySearch(int[] keys, Integer key) {
+    public int valueArraySearch(Object keys, Integer key) {
         return Arrays.binarySearch((int[]) keys, key);
     }
 

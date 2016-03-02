@@ -44,12 +44,12 @@ public class SerializerRecid extends SerializerEightByte<Long> {
 
 
     @Override
-    public int valueArraySearch(long[] keys, Long key) {
-        return Arrays.binarySearch(keys, key);
+    public int valueArraySearch(Object keys, Long key) {
+        return Arrays.binarySearch((long[])keys, key);
     }
 
     @Override
-    public void valueArraySerialize(DataOutput2 out, long[] vals) throws IOException {
+    public void valueArraySerialize(DataOutput2 out, Object vals) throws IOException {
         for (long o : (long[]) vals) {
             DBUtil.packRecid(out, o);
         }
