@@ -452,7 +452,7 @@ class Serializer_DOUBLE_ARRAY: SerializerTest<DoubleArray>(){
 
 
 class Serializer_JAVA: SerializerTest<Any>(){
-    override fun randomValue() = TT.randomString(1000)
+    override fun randomValue() = TT.randomString(10)
     override val serializer = Serializer.JAVA
 
     internal class Object2 : Serializable
