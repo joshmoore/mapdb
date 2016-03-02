@@ -2,7 +2,7 @@ package org.mapdb
 
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList
 import org.mapdb.StoreDirectJava.*
-import org.mapdb.DataIO.*
+import org.mapdb.DBUtil.*
 import org.mapdb.volume.Volume
 import org.mapdb.volume.VolumeFactory
 import java.io.IOException

@@ -4,7 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.mapdb.CC;
 import org.mapdb.DBException;
-import org.mapdb.DataIO;
+import org.mapdb.DBUtil;
 import org.mapdb.DataInput2;
 
 import java.io.File;
@@ -64,7 +64,7 @@ public final class ByteArrayVol extends Volume {
 
     @Override
     public final void ensureAvailable(long offset) {
-        offset = DataIO.roundUp(offset, 1L << sliceShift);
+        offset = DBUtil.roundUp(offset, 1L << sliceShift);
         int slicePos = (int) (offset >>> sliceShift);
 
         //check for most common case, this is already mapped
@@ -120,7 +120,7 @@ public final class ByteArrayVol extends Volume {
     public void putLong(long offset, long v) {
         int pos = (int) (offset & sliceSizeModMask);
         byte[] buf = getSlice(offset);
-        DataIO.putLong(buf, pos, v);
+        DBUtil.putLong(buf, pos, v);
     }
 
 
@@ -230,7 +230,7 @@ public final class ByteArrayVol extends Volume {
     public long getLong(long offset) {
         int pos = (int) (offset & sliceSizeModMask);
         byte[] buf = getSlice(offset);
-        return DataIO.getLong(buf, pos);
+        return DBUtil.getLong(buf, pos);
     }
 
     @Override

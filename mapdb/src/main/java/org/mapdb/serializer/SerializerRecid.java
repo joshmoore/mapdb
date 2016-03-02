@@ -1,6 +1,6 @@
 package org.mapdb.serializer;
 
-import org.mapdb.DataIO;
+import org.mapdb.DBUtil;
 import org.mapdb.DataInput2;
 import org.mapdb.DataOutput2;
 
@@ -14,12 +14,12 @@ public class SerializerRecid extends SerializerEightByte<Long> {
 
     @Override
     public void serialize(DataOutput2 out, Long value) throws IOException {
-        DataIO.packRecid(out, value);
+        DBUtil.packRecid(out, value);
     }
 
     @Override
     public Long deserialize(DataInput2 in, int available) throws IOException {
-        return new Long(DataIO.unpackRecid(in));
+        return new Long(DBUtil.unpackRecid(in));
     }
 
     @Override
@@ -51,7 +51,7 @@ public class SerializerRecid extends SerializerEightByte<Long> {
     @Override
     public void valueArraySerialize(DataOutput2 out, long[] vals) throws IOException {
         for (long o : (long[]) vals) {
-            DataIO.packRecid(out, o);
+            DBUtil.packRecid(out, o);
         }
     }
 
@@ -59,7 +59,7 @@ public class SerializerRecid extends SerializerEightByte<Long> {
     public long[] valueArrayDeserialize(DataInput2 in, int size) throws IOException {
         long[] ret = new long[size];
         for (int i = 0; i < size; i++) {
-            ret[i] = DataIO.unpackRecid(in);
+            ret[i] = DBUtil.unpackRecid(in);
         }
         return ret;
     }

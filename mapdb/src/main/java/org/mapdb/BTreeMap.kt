@@ -6,7 +6,6 @@ import org.eclipse.collections.impl.set.mutable.primitive.LongHashSet
 import org.eclipse.collections.impl.stack.mutable.primitive.LongArrayStack
 import org.mapdb.BTreeMapJava.*
 import org.mapdb.serializer.GroupSerializer
-import org.mapdb.serializer.GroupSerializerObjectArray
 import java.io.Closeable
 import java.io.ObjectStreamException
 import java.io.PrintStream
@@ -19,7 +18,62 @@ import java.util.concurrent.locks.LockSupport
 import java.util.function.BiConsumer
 
 /**
- * Concurrent sorted BTree Map
+ * A scalable concurrent {@link ConcurrentNavigableMap} implementation.
+ * The map is sorted according to the {@linkplain Comparable natural
+ * ordering} of its keys, or by a {@link Comparator} provided at map
+ * creation time.
+ *
+ * Insertion, removal,
+ * update, and access operations safely execute concurrently by
+ * multiple threads.  Iterators are <i>weakly consistent</i>, returning
+ * elements reflecting the state of the map at some point at or since
+ * the creation of the iterator.  They do <em>not</em> throw {@link
+ * ConcurrentModificationException}, and may proceed concurrently with
+ * other operations. Ascending key ordered views and their iterators
+ * are faster than descending ones.
+ *
+ * All <tt>Map.Entry</tt> pairs returned by methods in this class
+ * and its views represent snapshots of mappings at the time they were
+ * produced. They do <em>not</em> support the <tt>Entry.setValue</tt>
+ * method. (Note however that it is possible to change mappings in the
+ * associated map using <tt>put</tt>, <tt>putIfAbsent</tt>, or
+ * <tt>replace</tt>, depending on exactly which effect you need.)
+ * TODO is this correct, setValue might work?
+ *
+ * By default BTreeMap does not track its size and {@code size()} traverses collection to count its entries.
+ * There is option to enable counter, in that case {@code size()} returns instantly
+ *
+ * Additionally, the bulk operations <tt>putAll</tt>, <tt>equals</tt>, and
+ * <tt>clear</tt> are <em>not</em> guaranteed to be performed
+ * atomically. For example, an iterator operating concurrently with a
+ * <tt>putAll</tt> operation might view only some of the added
+ * elements. NOTE: there is an optional
+ *
+ * This class and its views and iterators implement all of the
+ * <em>optional</em> methods of the {@link Map} and {@link Iterator}
+ * interfaces. Like most other concurrent collections, this class does
+ * <em>not</em> permit the use of <tt>null</tt> keys or values because some
+ * null return values cannot be reliably distinguished from the absence of
+ *
+ * Theoretical design of BTreeMap is based on 1986 paper
+ * <a href="http://www.sciencedirect.com/science/article/pii/0022000086900218">
+ * Concurrent operations on B∗-trees with overtaking</a>
+ * written by Yehoshua Sagiv.
+ * More practical aspects of BTreeMap implementation are based on
+ * <a href="http://cs.au.dk/~tyoung/btree/index.html">demo application</a> from Thomas Dinsdale-Young.
+ * Also more work from Thomas: <a href="http://www.doc.ic.ac.uk/research/technicalreports/2011/#10">A Simple Abstraction for Complex Concurrent Indexes</a>
+ *
+ * B-Linked-Tree used here does not require locking for read.
+ * Updates and inserts locks only one, two or three nodes.
+ * </p><p>
+ *
+ * This B-Linked-Tree structure does not support removal well, entry deletion does not collapse tree nodes. Massive
+ * deletion causes empty nodes and performance lost. There is workaround in form of compaction process, but it is not
+ * implemented yet.
+ * </p>
+ *
+ * @author Jan Kotek
+ * @author some parts by Doug Lea and JSR-166 group
  */
 class BTreeMap<K,V>(
         keySerializer:Serializer<K>,
@@ -717,14 +771,6 @@ class BTreeMap<K,V>(
         return removeOrReplace(key, null, value)
     }
 
-    override fun clear() {
-        //TODO PERF optimize, traverse nodes and clear each node in one step
-        val iter = keys.iterator();
-        while (iter.hasNext()) {
-            iter.next()
-            iter.remove()
-        }
-    }
 
     override fun containsKey(key: K): Boolean {
         return get(key) != null
@@ -1989,5 +2035,80 @@ class BTreeMap<K,V>(
         if (key == null) throw NullPointerException()
         return findHigherKey(key, false)
     }
+
+    override fun clear() {
+
+        val iter = keys.iterator();
+        while (iter.hasNext()) {
+            iter.next()
+            iter.remove()
+        }
+    }
+
+//TODO PERF optimize clear, traverse nodes and clear each node in one step
+//    override fun clear() {
+//        val hasListeners = modListeners.size > 0
+//        var current = engine.get(rootRecidRef, Serializer.RECID)
+//
+//        var A = engine.get(current, nodeSerializer)
+//        //$DELAY$
+//        while (!A.isLeaf()) {
+//            current = A.child(0)
+//            //$DELAY$
+//            A = engine.get(current, nodeSerializer)
+//        }
+//
+//        var old: Long = 0
+//        try {
+//            while (true) {
+//                //$DELAY$
+//                //lock nodes
+//                lock(nodeLocks, current)
+//                if (old != 0) {
+//                    //$DELAY$
+//                    unlock(nodeLocks, old)
+//                }
+//                //$DELAY$
+//                //notify about deletion
+//                val size = A.keysLen(keySerializer) - 1
+//                if (hasListeners) {
+//                    //$DELAY$
+//                    for (i in 1..size - 1) {
+//                        var `val` = A.`val`(i - 1, valueNodeSerializer)
+//                        `val` = valExpand(`val`)
+//                        //$DELAY$
+//                        notify(A.key(keySerializer, i) as K?, `val` as V, null)
+//                    }
+//                }
+//
+//                //remove all node content
+//                A = (A as LeafNode).copyClear(keySerializer, valueNodeSerializer)
+//                //$DELAY$
+//                engine.update(current, A, nodeSerializer)
+//
+//                //move to next link
+//                old = current
+//                //$DELAY$
+//                current = A.next()
+//                if (current == 0) {
+//                    //end reached
+//                    //$DELAY$
+//                    unlock(nodeLocks, old)
+//                    //$DELAY$
+//                    return
+//                }
+//                //$DELAY$
+//                A = engine.get(current, nodeSerializer)
+//            }
+//        } catch (e: RuntimeException) {
+//            unlockAll(nodeLocks)
+//            throw e
+//        } catch (e: Exception) {
+//            unlockAll(nodeLocks)
+//            throw RuntimeException(e)
+//        }
+//
+//    }
+//
 
 }

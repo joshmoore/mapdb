@@ -201,7 +201,7 @@ class CrashJVMTestFail:CrashJVM(){
     override fun verifySeed(startSeed: Long, endSeed: Long, params:String): Long {
         val f = File(getTestDir(), "aaa")
         val seed = f.inputStream().use {
-            DataIO.unpackLong(it)
+            DBUtil.unpackLong(it)
         }
         assertTrue(seed>=startSeed)
         assertTrue(endSeed==-1L && seed<=endSeed)
@@ -216,7 +216,7 @@ class CrashJVMTestFail:CrashJVM(){
             seed++
             startSeed(seed)
             f.outputStream().use {
-                DataIO.packLong(it, seed)
+                DBUtil.packLong(it, seed)
             }
             commitSeed(seed)
         }

@@ -1,22 +1,16 @@
 package org.mapdb;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.io.*;
-import java.lang.ref.WeakReference;
-import java.nio.ByteBuffer;
-import java.security.SecureRandom;
 import java.util.Arrays;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 import static java.lang.Long.rotateLeft;
 
 /**
  * Various IO classes and utilities..
  */
-public final class DataIO {
+public final class DBUtil {
 
-    private DataIO(){}
+    private DBUtil(){}
 
     /**
      * Unpack int value from the input stream.
@@ -171,7 +165,7 @@ public final class DataIO {
      */
     static public long unpackRecid(DataInput2 in) throws IOException {
         long val = in.unpackLong();
-        val = DataIO.parity1Get(val);
+        val = DBUtil.parity1Get(val);
         return val >>> 1;
     }
 
@@ -185,7 +179,7 @@ public final class DataIO {
      * @throws java.io.IOException in case of IO error
      */
     static public void packRecid(DataOutput2 out, long value) throws IOException {
-        value = DataIO.parity1Set(value<<1);
+        value = DBUtil.parity1Set(value<<1);
         out.packLong(value);
     }
 
@@ -422,12 +416,12 @@ public final class DataIO {
     public static long parity16Set(long i) {
         if(CC.ASSERT && (i&0xFFFF)!=0)
             throw new DBException.PointerChecksumBroken();
-        return i | (DataIO.longHash(i+1)&0xFFFFL);
+        return i | (DBUtil.longHash(i+1)&0xFFFFL);
     }
 
     public static long parity16Get(long i) {
         long ret = i&0xFFFFFFFFFFFF0000L;
-        if((DataIO.longHash(ret+1)&0xFFFFL) != (i&0xFFFFL)){
+        if((DBUtil.longHash(ret+1)&0xFFFFL) != (i&0xFFFFL)){
             throw new DBException.PointerChecksumBroken();
         }
         return ret;

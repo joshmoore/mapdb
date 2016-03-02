@@ -157,6 +157,11 @@ open class DB(
             throw DBException.WrongConfiguration("Name contains illegal character, '#' is not allowed.")
     }
 
+    internal fun nameCatalogGet(name: String): String? {
+        return nameCatalogLoad()[name]
+    }
+
+
     internal fun  nameCatalogPutClass(
             nameCatalog: SortedMap<String, String>,
             key: String,
@@ -228,6 +233,83 @@ open class DB(
         }
     }
 
+    fun <E> get(name:String):E{
+        Utils.lockWrite(lock) {
+            val type = nameCatalogGet(name + Keys.type)
+            return when (type) {
+                "HashMap" -> hashMap(name).make()
+                "HashSet" -> hashSet(name).make()
+                "TreeMap" -> treeMap(name).make()
+                "TreeSet" -> treeSet(name).make()
+
+                "AtomicBoolean" -> atomicBoolean(name).make()
+                "AtomicInteger" -> atomicInteger(name).make()
+                "AtomicVar" -> atomicVar(name).make()
+                "AtomicString" -> atomicString(name).make()
+                "AtomicLong" -> atomicLong(name).make()
+
+                "IndexTreeList" -> indexTreeList(name).make()
+                "IndexTreeLongLongMap" -> indexTreeLongLongMap(name).make()
+
+                null -> null
+                else -> DBException.WrongConfiguration("Collection has unknown type: "+type)
+            } as E
+        }
+    }
+
+    fun exists(name: String): Boolean {
+        Utils.lockRead(lock) {
+            return nameCatalogGet(name + Keys.type) != null
+        }
+    }
+
+    fun getAllNames():Iterable<String>{
+        return nameCatalogLoad().keys
+                .filter { it.endsWith(Keys.type) }
+                .map {it.split("#")[0]}
+    }
+
+    fun getAll():Map<String, Any?>{
+        val ret = TreeMap<String,Any?>();
+        getAllNames().forEach { ret.put(it, get(it)) }
+        return ret
+    }
+//
+//
+//    /** rename named record into newName
+//
+//     * @param oldName current name of record/collection
+//     * *
+//     * @param newName new name of record/collection
+//     * *
+//     * @throws NoSuchElementException if oldName does not exist
+//     */
+//    @Synchronized fun rename(oldName: String, newName: String) {
+//        if (oldName == newName) return
+//        //$DELAY$
+//        val sub = catalog.tailMap(oldName)
+//        val toRemove = ArrayList<String>()
+//        //$DELAY$
+//        for (param in sub.keys) {
+//            if (!param.startsWith(oldName)) break
+//
+//            val suffix = param.substring(oldName.length)
+//            catalog.put(newName + suffix, catalog.get(param))
+//            toRemove.add(param)
+//        }
+//        if (toRemove.isEmpty()) throw NoSuchElementException("Could not rename, name does not exist: " + oldName)
+//        //$DELAY$
+//        val old = namesInstanciated.remove(oldName)
+//        if (old != null) {
+//            val old2 = old!!.get()
+//            if (old2 != null) {
+//                namesLookup.remove(IdentityWrapper(old2))
+//                namedPut(newName, old2)
+//            }
+//        }
+//        for (param in toRemove) catalog.remove(param)
+//    }
+
 
     class HashMapMaker<K,V>(
             override val db:DB,
@@ -293,7 +375,7 @@ open class DB(
 
         fun layout(concurrency:Int, dirSize:Int, levels:Int):HashMapMaker<K,V>{
             fun toShift(value:Int):Int{
-                return 31 - Integer.numberOfLeadingZeros(DataIO.nextPowTwo(Math.max(1,value)))
+                return 31 - Integer.numberOfLeadingZeros(DBUtil.nextPowTwo(Math.max(1,value)))
             }
             _concShift = toShift(concurrency)
             _dirShift = toShift(dirSize)
@@ -1169,6 +1251,7 @@ open class DB(
         }
     }
 
+    fun atomicVar(name:String) = atomicVar(name, Serializer.JAVA)
     fun <E> atomicVar(name:String, serializer:Serializer<E> ) = AtomicVarMaker(this, name, serializer)
 
     fun <E> atomicVar(name:String, serializer:Serializer<E>, value:E? ) = AtomicVarMaker(this, name, serializer, value)
@@ -1186,7 +1269,7 @@ open class DB(
 
         fun layout(dirSize:Int, levels:Int):IndexTreeLongLongMapMaker{
             fun toShift(value:Int):Int{
-                return 31 - Integer.numberOfLeadingZeros(DataIO.nextPowTwo(Math.max(1,value)))
+                return 31 - Integer.numberOfLeadingZeros(DBUtil.nextPowTwo(Math.max(1,value)))
             }
             _dirShift = toShift(dirSize)
             _levels = levels
@@ -1244,7 +1327,7 @@ open class DB(
 
         fun layout(dirSize:Int, levels:Int):IndexTreeListMaker<E>{
             fun toShift(value:Int):Int{
-                return 31 - Integer.numberOfLeadingZeros(DataIO.nextPowTwo(Math.max(1,value)))
+                return 31 - Integer.numberOfLeadingZeros(DBUtil.nextPowTwo(Math.max(1,value)))
             }
             _dirShift = toShift(dirSize)
             _levels = levels
@@ -1301,6 +1384,6 @@ open class DB(
     }
 
     fun <E> indexTreeList(name: String, serializer:Serializer<E>) = IndexTreeListMaker(this, name, serializer)
-    fun <E> indexTreeList(name: String) = indexTreeList(name, Serializer.JAVA)
+    fun indexTreeList(name: String) = indexTreeList(name, Serializer.JAVA)
 
 }

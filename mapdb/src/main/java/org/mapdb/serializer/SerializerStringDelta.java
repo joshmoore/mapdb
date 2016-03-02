@@ -1,11 +1,8 @@
 package org.mapdb.serializer;
 
-import org.jetbrains.annotations.NotNull;
 import org.mapdb.*;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Comparator;
 
 /**
  * Created by jan on 2/29/16.
@@ -68,7 +65,7 @@ public class SerializerStringDelta extends SerializerString{
 
         //find common prefix
         int prefixLen = commonPrefixLen(chars);
-        DataIO.packInt(out,prefixLen);
+        DBUtil.packInt(out,prefixLen);
         for (int i = 0; i < prefixLen; i++) {
             out.packInt(chars[0][i]);
         }

@@ -1,12 +1,10 @@
 package org.mapdb.serializer;
 
-import org.mapdb.DataIO;
+import org.mapdb.DBUtil;
 import org.mapdb.DataInput2;
 import org.mapdb.DataOutput2;
-import org.mapdb.Serializer;
 
 import java.io.IOException;
-import java.security.acl.Group;
 import java.util.Arrays;
 import java.util.Comparator;
 
@@ -43,7 +41,7 @@ public abstract class GroupSerializerObjectArray<A> implements GroupSerializer<A
     }
 
     @Override public Object[] valueArrayPut(Object[] vals, int pos, A newValue) {
-        return DataIO.arrayPut(vals, pos, newValue);
+        return DBUtil.arrayPut(vals, pos, newValue);
     }
 
     @Override public Object[] valueArrayUpdateVal(Object[] vals, int pos, A newValue) {
@@ -61,7 +59,7 @@ public abstract class GroupSerializerObjectArray<A> implements GroupSerializer<A
     }
 
     @Override public Object[] valueArrayDeleteValue(Object[] vals, int pos) {
-        return DataIO.arrayDelete(vals, pos, 1);
+        return DBUtil.arrayDelete(vals, pos, 1);
     }
 
     @Override public Object[] valueArrayToArray(Object[] vals){

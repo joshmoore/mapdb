@@ -904,7 +904,7 @@ class DBTest{
         db.close()
 
         db = DB(store=StoreDirect.make(file=f.path), storeOpened = true)
-        list = db.indexTreeList<Int>("aa").open() as IndexTreeList<Int>
+        list = db.indexTreeList("aa").open() as IndexTreeList<Int>
 
         for(i in 1 .. 1000)
             assertEquals(i, list[i-1])
@@ -949,13 +949,33 @@ class DBTest{
 
         test{it.atomicBoolean("aa")}
         test{it.atomicInteger("aa")}
-        test{it.atomicVar("aa", Serializer.JAVA)}
+        test{it.atomicVar("aa")}
         test{it.atomicString("aa")}
         test{it.atomicLong("aa")}
 
-        test{it.indexTreeList<Any>("aa")}
+        test{it.indexTreeList("aa")}
         test{it.indexTreeLongLongMap("aa")}
     }
+
+    @Test fun get() {
+        val db = DBMaker.memoryDB().make()
+
+        assertNull(db.get<Any?>("aa"))
+        assertTrue(db.treeMap("aa").make() === db.get<Any?>("aa"))
+        assertTrue(db.treeSet("ab").make() === db.get<Any?>("ab"))
+        assertTrue(db.hashMap("ac").make() === db.get<Any?>("ac"))
+        assertTrue(db.hashSet("ad").make() === db.get<Any?>("ad"))
+
+        assertTrue(db.atomicBoolean("ae").make() === db.get<Any?>("ae"))
+        assertTrue(db.atomicInteger("af").make() === db.get<Any?>("af"))
+        assertTrue(db.atomicVar("ag").make() === db.get<Any?>("ag"))
+        assertTrue(db.atomicString("ah").make() === db.get<Any?>("ah"))
+        assertTrue(db.atomicLong("ai").make() === db.get<Any?>("ai"))
+
+        assertTrue(db.indexTreeList("aj").make() === db.get<Any?>("aj"))
+        assertTrue(db.indexTreeLongLongMap("ak").make() === db.get<Any?>("ak"))
+    }
+
 
 
 }

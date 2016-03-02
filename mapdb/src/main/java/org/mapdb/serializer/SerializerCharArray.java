@@ -1,9 +1,8 @@
 package org.mapdb.serializer;
 
-import org.mapdb.DataIO;
+import org.mapdb.DBUtil;
 import org.mapdb.DataInput2;
 import org.mapdb.DataOutput2;
-import org.mapdb.Serializer;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -43,8 +42,8 @@ public class SerializerCharArray extends GroupSerializerObjectArray<char[]> {
 
     @Override
     public int hashCode(char[] bytes, int seed) {
-        return DataIO.longHash(
-                DataIO.hash(bytes, 0, bytes.length, seed));
+        return DBUtil.longHash(
+                DBUtil.hash(bytes, 0, bytes.length, seed));
     }
 
     @Override

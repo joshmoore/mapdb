@@ -1,6 +1,6 @@
 package org.mapdb.serializer;
 
-import org.mapdb.DataIO;
+import org.mapdb.DBUtil;
 import org.mapdb.DataInput2;
 import org.mapdb.DataOutput2;
 import org.mapdb.Serializer;
@@ -40,8 +40,8 @@ public class SerializerByteArray implements GroupSerializer<byte[], byte[][]> {
     }
 
     public int hashCode(byte[] bytes, int seed) {
-        return DataIO.longHash(
-                DataIO.hash(bytes, 0, bytes.length, seed));
+        return DBUtil.longHash(
+                DBUtil.hash(bytes, 0, bytes.length, seed));
     }
 
     @Override
