@@ -27,6 +27,10 @@ open class DBException(message: String?, cause: Throwable?) : RuntimeException(m
     class WrongFormat(msg: String) : DBException(msg);
     class Interrupted(e:InterruptedException) : DBException("One of threads was interrupted while accessing store", e);
     open class DataCorruption(msg: String) : DBException(msg);
+
+    class HeadChecksumBroken(msg:String):DataCorruption(msg);
+
+
     class PointerChecksumBroken():DataCorruption("Broken bit parity")
 
     class FileLocked(path: Path, exception: Exception):
