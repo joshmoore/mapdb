@@ -24,9 +24,6 @@
         <guava.version>19.0</guava.version>
 
 
-        <jcache.api.version>1.0.0</jcache.api.version>
-        <jcache.tck.version>1.0.1</jcache.tck.version>
-
         <threadCount>3</threadCount>
         <argline />
 
@@ -37,8 +34,6 @@
     <modules>
         <module>mapdb</module>
         <module>mapdb-benchmark</module>
-        <module>mapdb-jcache</module>
-        <module>mapdb-jcache-tck-test</module>
         <module>mapdb-site</module>
     </modules>
 
